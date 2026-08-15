@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/premium_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class PremiumGuard extends StatelessWidget {
   final Widget child;
@@ -57,14 +58,14 @@ class _LockedFeature extends StatelessWidget {
             Icon(Icons.lock_outline, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text(
-              featureName ?? 'Premium Feature',
+              featureName ?? AppLocalizations.t('premiumFeature'),
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               requiredLevel == PremiumType.annual
-                  ? 'This feature requires an Annual Contractor subscription.'
-                  : 'This feature requires a Freelancer subscription.',
+                  ? AppLocalizations.t('requiresAnnualContractor')
+                  : AppLocalizations.t('requiresFreelancerSubscription'),
               textAlign: TextAlign.center,
               style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
@@ -73,7 +74,7 @@ class _LockedFeature extends StatelessWidget {
               onPressed: () {
                 Navigator.pushNamed(context, '/premium');
               },
-              child: const Text('Upgrade Now'),
+              child: Text(AppLocalizations.t('upgrade')),
             ),
           ],
         ),

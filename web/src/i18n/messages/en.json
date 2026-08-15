@@ -1,0 +1,94 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "loading": "Loading...",
+    "logout": "Sign Out",
+    "language": "Language",
+    "english": "English",
+    "chinese": "中文",
+    "user": "User"
+  },
+  "nav": {
+    "dashboard": "Annual Dashboard",
+    "annualReport": "Tax Report",
+    "export": "Batch Export"
+  },
+  "login": {
+    "title": "Freelance Hub",
+    "subtitle": "Web Dashboard — Annual Contractor Plan",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "submit": "Sign In",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "hint": "Web access requires an Annual Contractor subscription.",
+    "enterEmailAndPassword": "Please enter email and password",
+    "annualOnly": "Web dashboard is available for the Annual Contractor plan only.",
+    "annualExpired": "Your Annual subscription has expired. Please renew to access the Web dashboard.",
+    "success": "Login successful",
+    "failed": "Login failed"
+  },
+  "dashboard": {
+    "annualIncome": "Annual Income",
+    "totalHours": "Total Hours",
+    "totalExpenses": "Total Expenses",
+    "taxDeductible": "Tax Deductible",
+    "netIncome": "Net Income",
+    "monthlyIncomeTrend": "Monthly Income Trend",
+    "monthlyExpenses": "Monthly Expenses",
+    "expenseByCategory": "Expense by Category",
+    "incomeByProject": "Income by Project",
+    "loadFailed": "Failed to load report"
+  },
+  "report": {
+    "annualTitle": "Annual Tax Summary — {year}",
+    "totalIncome": "Total Income",
+    "totalHours": "Total Hours",
+    "totalExpenses": "Total Expenses",
+    "taxDeductible": "Tax Deductible",
+    "netIncome": "Net Income",
+    "estSeTax": "Est. SE Tax (15.3%)",
+    "quarterlyBreakdown": "Quarterly Breakdown",
+    "quarter": "Quarter",
+    "hours": "Hours",
+    "income": "Income",
+    "expenses": "Expenses",
+    "deductible": "Deductible",
+    "disclaimerStrong": "DISCLAIMER:",
+    "disclaimerBody": "This report is for record-keeping purposes only and does not constitute tax advice. Please consult a certified tax professional for filing advice.",
+    "loadFailed": "Failed to load annual report"
+  },
+  "export": {
+    "title": "Export Report",
+    "reportType": "Report Type",
+    "annual": "Annual Tax Summary",
+    "monthly": "Monthly Report",
+    "year": "Year",
+    "month": "Month",
+    "exportPdf": "Export PDF",
+    "exportCsv": "Export CSV",
+    "pdfExported": "Report exported",
+    "csvExported": "CSV exported",
+    "pdfExportFailed": "Export failed",
+    "csvExportFailed": "CSV export failed",
+    "months": {
+      "1": "January", "2": "February", "3": "March",
+      "4": "April", "5": "May", "6": "June",
+      "7": "July", "8": "August", "9": "September",
+      "10": "October", "11": "November", "12": "December"
+    }
+  },
+  "errors": {
+    "sessionExpired": "Session expired, please sign in again",
+    "networkError": "Network error, please check your connection",
+    "permissionDenied": "Permission denied",
+    "notFound": "Resource not found",
+    "serverError": "Server error, please try again later",
+    "rateLimited": "Too many requests, please try again later"
+  }
+}

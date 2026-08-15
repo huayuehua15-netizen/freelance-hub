@@ -1,0 +1,94 @@
+{
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "confirm": "确认",
+    "back": "返回",
+    "loading": "加载中...",
+    "logout": "退出登录",
+    "language": "语言",
+    "english": "English",
+    "chinese": "中文",
+    "user": "用户"
+  },
+  "nav": {
+    "dashboard": "年度仪表盘",
+    "annualReport": "报税报表",
+    "export": "批量导出"
+  },
+  "login": {
+    "title": "Freelance Hub",
+    "subtitle": "Web 仪表盘 — 年度合同套餐",
+    "emailLabel": "邮箱",
+    "passwordLabel": "密码",
+    "submit": "登录",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "hint": "Web 访问需订阅年度合同套餐。",
+    "enterEmailAndPassword": "请输入邮箱和密码",
+    "annualOnly": "Web 仪表盘仅限年度合同套餐使用。",
+    "annualExpired": "你的年度订阅已过期,请续订后访问 Web 仪表盘。",
+    "success": "登录成功",
+    "failed": "登录失败"
+  },
+  "dashboard": {
+    "annualIncome": "年度收入",
+    "totalHours": "总工时",
+    "totalExpenses": "总开支",
+    "taxDeductible": "可抵扣税",
+    "netIncome": "净收入",
+    "monthlyIncomeTrend": "月度收入趋势",
+    "monthlyExpenses": "月度开支",
+    "expenseByCategory": "开支分类",
+    "incomeByProject": "项目收入",
+    "loadFailed": "加载报表失败"
+  },
+  "report": {
+    "annualTitle": "年度报税汇总 — {year}",
+    "totalIncome": "总收入",
+    "totalHours": "总工时",
+    "totalExpenses": "总开支",
+    "taxDeductible": "可抵扣税",
+    "netIncome": "净收入",
+    "estSeTax": "预计自雇税 (15.3%)",
+    "quarterlyBreakdown": "季度明细",
+    "quarter": "季度",
+    "hours": "工时",
+    "income": "收入",
+    "expenses": "开支",
+    "deductible": "可抵扣",
+    "disclaimerStrong": "免责声明:",
+    "disclaimerBody": "本报表仅用于记录目的,不构成税务建议。请咨询认证税务专业人士获取申报建议。",
+    "loadFailed": "加载年度报表失败"
+  },
+  "export": {
+    "title": "导出报表",
+    "reportType": "报表类型",
+    "annual": "年度报税汇总",
+    "monthly": "月度报表",
+    "year": "年份",
+    "month": "月份",
+    "exportPdf": "导出 PDF",
+    "exportCsv": "导出 CSV",
+    "pdfExported": "报表已导出",
+    "csvExported": "CSV 已导出",
+    "pdfExportFailed": "导出失败",
+    "csvExportFailed": "CSV 导出失败",
+    "months": {
+      "1": "一月", "2": "二月", "3": "三月",
+      "4": "四月", "5": "五月", "6": "六月",
+      "7": "七月", "8": "八月", "9": "九月",
+      "10": "十月", "11": "十一月", "12": "十二月"
+    }
+  },
+  "errors": {
+    "sessionExpired": "会话已过期,请重新登录",
+    "networkError": "网络错误,请检查连接",
+    "permissionDenied": "权限不足",
+    "notFound": "资源不存在",
+    "serverError": "服务器错误,请稍后重试",
+    "rateLimited": "请求过于频繁,请稍后再试"
+  }
+}

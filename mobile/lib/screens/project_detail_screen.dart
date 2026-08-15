@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/client_project.dart';
 import '../providers/project_provider.dart';
 import '../providers/timelog_provider.dart';
@@ -21,8 +22,8 @@ class ProjectDetailScreen extends StatelessWidget {
 
         if (project == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Project')),
-            body: const Center(child: Text('Project not found')),
+            appBar: AppBar(title: Text(AppLocalizations.t('project'))),
+            body: Center(child: Text(AppLocalizations.t('projectNotFound'))),
           );
         }
 
@@ -38,10 +39,10 @@ class ProjectDetailScreen extends StatelessWidget {
             actions: [
               PopupMenuButton<String>(
                 onSelected: (value) => _handleMenuAction(context, value, project, projectProvider),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(value: 'archive', child: Text('Archive')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'edit', child: Text(AppLocalizations.t('edit'))),
+                  PopupMenuItem(value: 'archive', child: Text(AppLocalizations.t('archive'))),
+                  PopupMenuItem(value: 'delete', child: Text(AppLocalizations.t('delete'))),
                 ],
               ),
             ],
@@ -65,8 +66,8 @@ class ProjectDetailScreen extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         children: [
-                          _infoChip('Rate', '${CurrencyFormat.symbol()}${project.hourlyRate.toStringAsFixed(2)}/hr'),
-                          _infoChip('Status', project.status),
+                          _infoChip(AppLocalizations.t('rate'), '${CurrencyFormat.symbol()}${project.hourlyRate.toStringAsFixed(2)}/hr'),
+                          _infoChip(AppLocalizations.t('status'), project.status),
                         ],
                       ),
                     ],
@@ -81,19 +82,19 @@ class ProjectDetailScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _metric('Hours', '${totalHours.toStringAsFixed(1)}h'),
-                      _metric('Income', CurrencyFormat.money(totalIncome)),
-                      _metric('Expenses', CurrencyFormat.money(totalExpenses)),
+                      _metric(AppLocalizations.t('hours'), '${totalHours.toStringAsFixed(1)}h'),
+                      _metric(AppLocalizations.t('income'), CurrencyFormat.money(totalIncome)),
+                      _metric(AppLocalizations.t('expenses'), CurrencyFormat.money(totalExpenses)),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               // 工时记录
-              const Text('Time Logs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(AppLocalizations.t('timeLogs'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               if (logs.isEmpty)
-                const Card(child: ListTile(title: Text('No time logs yet'), subtitle: Text('Start a timer for this project')))
+                Card(child: ListTile(title: Text(AppLocalizations.t('noTimeLogs')), subtitle: Text(AppLocalizations.t('startTimerForProjectHint'))))
               else
                 ...logs.map((t) {
                   final d = DateTime.fromMillisecondsSinceEpoch(t.startTime);
@@ -110,10 +111,10 @@ class ProjectDetailScreen extends StatelessWidget {
                 }),
               const SizedBox(height: 16),
               // 开支记录
-              const Text('Expenses', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(AppLocalizations.t('expenses'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               if (expenses.isEmpty)
-                const Card(child: ListTile(title: Text('No expenses yet')))
+                Card(child: ListTile(title: Text(AppLocalizations.t('noExpenses'))))
               else
                 ...expenses.map((e) {
                   final d = DateTime.fromMillisecondsSinceEpoch(e.expenseDate);
@@ -146,12 +147,12 @@ class ProjectDetailScreen extends StatelessWidget {
       case 'archive':
         provider.archiveProject(project.projectId);
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project archived')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.t('projectArchived'))));
         break;
       case 'delete':
         provider.deleteProject(project.projectId);
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Project deleted')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.t('projectDeleted'))));
         break;
     }
   }
@@ -239,37 +240,37 @@ class _ProjectEditSheetState extends State<_ProjectEditSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Edit Project', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.t('editProject'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextFormField(
               controller: _clientNameController,
-              decoration: const InputDecoration(labelText: 'Client Name'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('clientName')),
               maxLength: 100,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (v) {
                 final s = v?.trim() ?? '';
-                if (s.isEmpty) return 'Client name is required';
-                if (s.length > 100) return 'Maximum 100 characters';
+                if (s.isEmpty) return AppLocalizations.t('errors.clientNameRequired');
+                if (s.length > 100) return AppLocalizations.t1('errors.maxLength', {'n': '100'});
                 return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _projectNameController,
-              decoration: const InputDecoration(labelText: 'Project Name'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('projectName')),
               maxLength: 100,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (v) {
                 final s = v?.trim() ?? '';
-                if (s.isEmpty) return 'Project name is required';
-                if (s.length > 100) return 'Maximum 100 characters';
+                if (s.isEmpty) return AppLocalizations.t('errors.projectNameRequired');
+                if (s.length > 100) return AppLocalizations.t1('errors.maxLength', {'n': '100'});
                 return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _rateController,
-              decoration: InputDecoration(labelText: 'Hourly Rate (${CurrencyFormat.symbol()})'),
+              decoration: InputDecoration(labelText: '${AppLocalizations.t('hourlyRate')} (${CurrencyFormat.symbol()})'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               autovalidateMode: AutovalidateMode.onUserInteraction,
               inputFormatters: [
@@ -277,21 +278,21 @@ class _ProjectEditSheetState extends State<_ProjectEditSheet> {
               ],
               validator: (v) {
                 final val = double.tryParse(v?.trim() ?? '');
-                if (val == null || val <= 0) return 'Enter a valid rate (> 0)';
+                if (val == null || val <= 0) return AppLocalizations.t('errors.invalidRate');
                 return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Client Email (optional)'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('clientEmailOptional')),
               keyboardType: TextInputType.emailAddress,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (v) {
                 final email = v?.trim() ?? '';
                 if (email.isEmpty) return null;
                 if (!RegExp(r'^[\w.+-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
-                  return 'Enter a valid email address';
+                  return AppLocalizations.t('errors.invalidEmail');
                 }
                 return null;
               },
@@ -304,7 +305,7 @@ class _ProjectEditSheetState extends State<_ProjectEditSheet> {
                 onPressed: _saving ? null : _submit,
                 child: _saving
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Save Changes'),
+                    : Text(AppLocalizations.t('saveChanges')),
               ),
             ),
             const SizedBox(height: 16),

@@ -1,30 +1,30 @@
 <template>
   <div class="export-page">
     <el-card>
-      <h2>Export Report</h2>
+      <h2>{{ t('export.title') }}</h2>
       <el-form label-width="140px" style="max-width: 500px; margin-top: 24px">
-        <el-form-item label="Report Type">
+        <el-form-item :label="t('export.reportType')">
           <el-radio-group v-model="form.type">
-            <el-radio value="annual">Annual Tax Summary</el-radio>
-            <el-radio value="monthly">Monthly Report</el-radio>
+            <el-radio value="annual">{{ t('export.annual') }}</el-radio>
+            <el-radio value="monthly">{{ t('export.monthly') }}</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="Year">
+        <el-form-item :label="t('export.year')">
           <el-select v-model="form.year" style="width: 160px">
             <el-option v-for="y in years" :key="y" :label="y" :value="y" />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="form.type === 'monthly'" label="Month">
+        <el-form-item v-if="form.type === 'monthly'" :label="t('export.month')">
           <el-select v-model="form.month" style="width: 160px">
             <el-option v-for="m in months" :key="m.value" :label="m.label" :value="m.value" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="exporting" @click="handleExport">
-            Export PDF
+            {{ t('export.exportPdf') }}
           </el-button>
           <el-button type="success" :loading="exporting" plain @click="handleExportCsv">
-            Export CSV
+            {{ t('export.exportCsv') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -33,18 +33,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { reportApi } from '../api'
+
+const { t, locale } = useI18n()
 
 const currentYear = new Date().getFullYear()
 const years = [currentYear - 1, currentYear, currentYear + 1].sort((a, b) => a - b)
-const months = [
-  { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
-  { value: 4, label: 'April' }, { value: 5, label: 'May' }, { value: 6, label: 'June' },
-  { value: 7, label: 'July' }, { value: 8, label: 'August' }, { value: 9, label: 'September' },
-  { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' },
-]
+const months = computed(() => {
+  const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  return keys.map((v) => ({ value: v, label: t(`export.months.${v}`) }))
+})
 
 const exporting = ref(false)
 const form = ref({
@@ -68,9 +69,9 @@ const handleExport = async () => {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    ElMessage.success('Report exported')
+    ElMessage.success(t('export.pdfExported'))
   } catch (e) {
-    ElMessage.error('Export failed')
+    ElMessage.error(t('export.pdfExportFailed'))
   } finally {
     exporting.value = false
   }
@@ -88,9 +89,9 @@ const handleExportCsv = async () => {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    ElMessage.success('CSV exported')
+    ElMessage.success(t('export.csvExported'))
   } catch (e) {
-    ElMessage.error('CSV export failed')
+    ElMessage.error(t('export.csvExportFailed'))
   } finally {
     exporting.value = false
   }

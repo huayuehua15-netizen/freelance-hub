@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/timelog_provider.dart';
 import '../providers/project_provider.dart';
 import '../config/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/currency_format.dart';
 
 class TimerScreen extends StatefulWidget {
@@ -35,7 +36,7 @@ class _TimerScreenState extends State<TimerScreen> {
     final timerProvider = context.watch<TimelogProvider>();
     final projectProvider = context.watch<ProjectProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Timer')),
+      appBar: AppBar(title: Text(AppLocalizations.t('timer'))),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -66,7 +67,7 @@ class _TimerScreenState extends State<TimerScreen> {
       final project = projects.getProjectById(timer.currentProjectId ?? '');
       return Card(
         child: ListTile(
-          title: Text(project?.projectName ?? 'Unknown Project'),
+          title: Text(project?.projectName ?? AppLocalizations.t('unknownProject')),
           subtitle: Text(project?.clientName ?? ''),
           trailing: Text('${CurrencyFormat.symbol()}${project?.hourlyRate.toStringAsFixed(2) ?? '0'}/hr'),
         ),
@@ -77,15 +78,15 @@ class _TimerScreenState extends State<TimerScreen> {
         color: AppTheme.primary.withOpacity(0.06),
         child: ListTile(
           leading: const Icon(Icons.info_outline, color: AppTheme.primary),
-          title: const Text('No project yet'),
-          subtitle: const Text('Create a project first to start the timer.'),
+          title: Text(AppLocalizations.t('noProjectYet')),
+          subtitle: Text(AppLocalizations.t('noProjectTimerHint')),
           onTap: () => Navigator.pushNamed(context, '/projects'),
         ),
       );
     }
     return DropdownButtonFormField<String>(
       value: timer.currentProjectId,
-      decoration: const InputDecoration(labelText: 'Select Project'),
+      decoration: InputDecoration(labelText: AppLocalizations.t('selectProject')),
       items: projects.activeProjects.map((p) {
         return DropdownMenuItem(
           value: p.projectId,
@@ -103,8 +104,8 @@ class _TimerScreenState extends State<TimerScreen> {
       color: AppTheme.primary.withOpacity(0.06),
       child: ListTile(
         leading: const Icon(Icons.lock_outline, color: AppTheme.primary),
-        title: const Text('Free plan project limit reached'),
-        subtitle: const Text('Upgrade to add unlimited projects and unlock more features.'),
+        title: Text(AppLocalizations.t('freePlanLimitReached')),
+        subtitle: Text(AppLocalizations.t('upgradeForMoreFeatures')),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.pushNamed(context, '/premium'),
       ),
@@ -136,12 +137,12 @@ class _TimerScreenState extends State<TimerScreen> {
     return Column(
       children: [
         TextField(
-          decoration: const InputDecoration(labelText: 'Tag (design, dev, meeting...)'),
+          decoration: InputDecoration(labelText: AppLocalizations.t('tagPlaceholder')),
           onChanged: timer.setTag,
         ),
         const SizedBox(height: 12),
         TextField(
-          decoration: const InputDecoration(labelText: 'Note'),
+          decoration: InputDecoration(labelText: AppLocalizations.t('note')),
           onChanged: timer.setNote,
           maxLines: 2,
         ),
@@ -158,7 +159,7 @@ class _TimerScreenState extends State<TimerScreen> {
           child: ElevatedButton.icon(
             onPressed: timer.currentProjectId == null ? null : timer.startTimer,
             icon: const Icon(Icons.play_arrow),
-            label: const Text('Start Timer', style: TextStyle(fontSize: 18)),
+            label: Text(AppLocalizations.t('startTimer'), style: const TextStyle(fontSize: 18)),
           ),
         );
       case TimerState.running:
@@ -168,7 +169,7 @@ class _TimerScreenState extends State<TimerScreen> {
               child: OutlinedButton.icon(
                 onPressed: timer.pauseTimer,
                 icon: const Icon(Icons.pause),
-                label: const Text('Pause'),
+                label: Text(AppLocalizations.t('pause')),
               ),
             ),
             const SizedBox(width: 12),
@@ -179,12 +180,12 @@ class _TimerScreenState extends State<TimerScreen> {
                   final log = await timer.stopAndSave(project?.hourlyRate ?? 0);
                   if (log != null && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Time log saved')),
+                      SnackBar(content: Text(AppLocalizations.t('timeLogSaved'))),
                     );
                   }
                 },
                 icon: const Icon(Icons.stop),
-                label: const Text('Stop & Save'),
+                label: Text(AppLocalizations.t('stopAndSave')),
               ),
             ),
           ],
@@ -196,7 +197,7 @@ class _TimerScreenState extends State<TimerScreen> {
               child: OutlinedButton.icon(
                 onPressed: timer.resumeTimer,
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('Resume'),
+                label: Text(AppLocalizations.t('resume')),
               ),
             ),
             const SizedBox(width: 12),
@@ -207,12 +208,12 @@ class _TimerScreenState extends State<TimerScreen> {
                   final log = await timer.stopAndSave(project?.hourlyRate ?? 0);
                   if (log != null && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Time log saved')),
+                      SnackBar(content: Text(AppLocalizations.t('timeLogSaved'))),
                     );
                   }
                 },
                 icon: const Icon(Icons.stop),
-                label: const Text('Stop & Save'),
+                label: Text(AppLocalizations.t('stopAndSave')),
               ),
             ),
             const SizedBox(width: 12),

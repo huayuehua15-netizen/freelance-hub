@@ -1,0 +1,72 @@
+{
+  "common": {
+    "success": "success",
+    "internalError": "Internal server error",
+    "duplicateEntry": "Duplicate entry"
+  },
+  "errors": {
+    "auth": {
+      "tokenRequired": "Authorization token required",
+      "authenticationRequired": "Authentication required",
+      "userNotFound": "User not found",
+      "invalidToken": "Invalid or expired token",
+      "emailExists": "Email already registered",
+      "invalidCredentials": "Invalid email or password",
+      "refreshTokenRequired": "Refresh token required",
+      "refreshTokenInvalid": "Refresh token expired or invalid, please login again",
+      "refreshTokenExpired": "Refresh token expired, please login again"
+    },
+    "validation": {
+      "emailRequired": "A valid email address is required",
+      "passwordInvalid": "Password must be at least 8 characters and include a letter and a number",
+      "userNameTooLong": "User name must be 100 characters or fewer",
+      "emailPasswordRequired": "Email and password are required"
+    },
+    "project": {
+      "notFound": "Project not found"
+    },
+    "timelog": {
+      "notFound": "Time log not found"
+    },
+    "expense": {
+      "notFound": "Expense not found"
+    },
+    "report": {
+      "yearMonthInvalid": "year must be between 2000 and 2100 and month must be between 1 and 12",
+      "yearInvalid": "year must be between 2000 and 2100",
+      "yearMonthRequired": "A valid year and month are required",
+      "yearRequired": "A valid year is required",
+      "exportTypeInvalid": "Invalid export type. Use \"monthly\" or \"annual\"."
+    },
+    "rateLimit": {
+      "authTooMany": "Too many login attempts, please try again later",
+      "tooMany": "Too many requests, please try again later"
+    },
+    "sync": {
+      "projectsArrayRequired": "projects must be an array",
+      "timelogsArrayRequired": "timeLogs must be an array",
+      "expensesArrayRequired": "expenses must be an array"
+    },
+    "premium": {
+      "requiresMonthly": "This feature requires a Monthly or Annual subscription",
+      "requiresAnnual": "This feature requires an Annual Contractor subscription"
+    },
+    "webhook": {
+      "invalidSignature": "Invalid webhook signature",
+      "internalError": "Internal server error"
+    }
+  },
+  "auth": {
+    "loggedOut": "Logged out successfully",
+    "accountDeletionScheduled": "Account scheduled for deletion. Data will be permanently removed after 30 days."
+  },
+  "project": {
+    "deleted": "Project deleted"
+  },
+  "timelog": {
+    "deleted": "Time log deleted"
+  },
+  "expense": {
+    "deleted": "Expense deleted"
+  }
+}

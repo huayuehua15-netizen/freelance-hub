@@ -1,0 +1,72 @@
+{
+  "common": {
+    "success": "成功",
+    "internalError": "服务器内部错误",
+    "duplicateEntry": "数据重复"
+  },
+  "errors": {
+    "auth": {
+      "tokenRequired": "需要登录令牌",
+      "authenticationRequired": "需要登录",
+      "userNotFound": "用户不存在",
+      "invalidToken": "登录已过期或令牌无效，请重新登录",
+      "emailExists": "该邮箱已注册",
+      "invalidCredentials": "邮箱或密码错误",
+      "refreshTokenRequired": "需要刷新令牌",
+      "refreshTokenInvalid": "刷新令牌已过期或无效，请重新登录",
+      "refreshTokenExpired": "刷新令牌已过期，请重新登录"
+    },
+    "validation": {
+      "emailRequired": "请输入有效的邮箱地址",
+      "passwordInvalid": "密码至少 8 位，且需包含字母和数字",
+      "userNameTooLong": "用户名不能超过 100 个字符",
+      "emailPasswordRequired": "请输入邮箱和密码"
+    },
+    "project": {
+      "notFound": "项目不存在"
+    },
+    "timelog": {
+      "notFound": "工时记录不存在"
+    },
+    "expense": {
+      "notFound": "开支记录不存在"
+    },
+    "report": {
+      "yearMonthInvalid": "年份须在 2000-2100 之间，月份须在 1-12 之间",
+      "yearInvalid": "年份须在 2000-2100 之间",
+      "yearMonthRequired": "请输入有效的年份和月份",
+      "yearRequired": "请输入有效的年份",
+      "exportTypeInvalid": "导出类型无效，请使用 \"monthly\" 或 \"annual\""
+    },
+    "rateLimit": {
+      "authTooMany": "登录尝试次数过多，请稍后再试",
+      "tooMany": "请求过于频繁，请稍后再试"
+    },
+    "sync": {
+      "projectsArrayRequired": "projects 必须为数组",
+      "timelogsArrayRequired": "timeLogs 必须为数组",
+      "expensesArrayRequired": "expenses 必须为数组"
+    },
+    "premium": {
+      "requiresMonthly": "该功能需要月度或年度订阅",
+      "requiresAnnual": "该功能需要年度承包商订阅"
+    },
+    "webhook": {
+      "invalidSignature": "Webhook 签名无效",
+      "internalError": "服务器内部错误"
+    }
+  },
+  "auth": {
+    "loggedOut": "已成功退出登录",
+    "accountDeletionScheduled": "账号已标记删除，数据将在 30 天后永久清除"
+  },
+  "project": {
+    "deleted": "项目已删除"
+  },
+  "timelog": {
+    "deleted": "工时记录已删除"
+  },
+  "expense": {
+    "deleted": "开支记录已删除"
+  }
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/project_provider.dart';
 import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
@@ -45,11 +46,12 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     icon: const Icon(Icons.close),
                     onPressed: _exitSelectionMode,
                   ),
-                  title: Text('${_selectedIds.length} selected'),
+                  title: Text(AppLocalizations.t1('nSelected', {'n': '${_selectedIds.length}'})),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.archive_outlined),
-                      onPressed: _selectedIds.isEmpty
+                      // 修复 M2:批量归档是 Annual 专属功能,Free/Monthly 不能用
+                      onPressed: (_selectedIds.isEmpty || !premiumProvider.isAnnual)
                           ? null
                           : () => _batchArchive(projectProvider),
                     ),
@@ -65,10 +67,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   title: _searching
                       ? TextField(
                           autofocus: true,
-                          decoration: const InputDecoration(hintText: 'Search projects...', border: InputBorder.none),
+                          decoration: InputDecoration(hintText: AppLocalizations.t('searchProjectsHint'), border: InputBorder.none),
                           onChanged: (v) => setState(() => _query = v),
                         )
-                      : const Text('Projects'),
+                      : Text(AppLocalizations.t('projects')),
                   actions: [
                     IconButton(
                       icon: Icon(_searching ? Icons.close : Icons.search),
@@ -95,11 +97,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Row(
                   children: [
-                    _filterChip('Active', 'active'),
+                    _filterChip(AppLocalizations.t('filterActive'), 'active'),
                     const SizedBox(width: 8),
-                    _filterChip('Archived', 'archived'),
+                    _filterChip(AppLocalizations.t('filterArchived'), 'archived'),
                     const SizedBox(width: 8),
-                    _filterChip('All', 'all'),
+                    _filterChip(AppLocalizations.t('filterAll'), 'all'),
                   ],
                 ),
               ),
@@ -109,11 +111,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                     : filtered.isEmpty
                         ? EmptyState(
                             icon: Icons.folder_outlined,
-                            title: _query.isEmpty ? 'No projects yet' : 'No matching projects',
+                            title: _query.isEmpty ? AppLocalizations.t('noProjects') : AppLocalizations.t('noMatchingProjects'),
                             subtitle: _query.isEmpty
-                                ? 'Create your first client project to start tracking billable hours.'
-                                : 'Try a different search or filter.',
-                            buttonText: 'Create Project',
+                                ? AppLocalizations.t('noProjectsHint')
+                                : AppLocalizations.t('noMatchingProjectsHint'),
+                            buttonText: AppLocalizations.t('createProject'),
                             onButtonPressed: () => _showCreateProjectSheet(context),
                           )
                     : RefreshIndicator(
@@ -197,10 +199,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const PremiumGuard(
+      builder: (_) => PremiumGuard(
         requiredLevel: PremiumType.monthly,
-        featureName: 'Unlimited Projects',
-        child: SizedBox.shrink(),
+        featureName: AppLocalizations.t('unlimitedProjectsFeature'),
+        child: const SizedBox.shrink(),
       ),
     );
   }
@@ -238,10 +240,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete ${_selectedIds.length} project(s)?'),
-        content: const Text('Projects will be soft-deleted and hidden from lists.'),
+        title: Text(AppLocalizations.t1('deleteNProjectsConfirm', {'n': '${_selectedIds.length}'})),
+        content: Text(AppLocalizations.t('softDeleteProjectsHint')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.t('cancel'))),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -250,7 +252,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               }
               _exitSelectionMode();
             },
-            child: const Text('Delete', style: TextStyle(color: AppTheme.danger)),
+            child: Text(AppLocalizations.t('delete'), style: TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -298,8 +300,8 @@ class _CreateProjectSheetState extends State<_CreateProjectSheet> {
     if (project == null) {
       // 免费版达到 3 个项目上限
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Free plan limit reached (3 projects). Upgrade to Premium to add more.'),
+        SnackBar(
+          content: Text(AppLocalizations.t('freePlanLimitProjects')),
         ),
       );
       setState(() => _saving = false);
@@ -307,7 +309,7 @@ class _CreateProjectSheetState extends State<_CreateProjectSheet> {
     }
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Project created')),
+      SnackBar(content: Text(AppLocalizations.t('projectCreated'))),
     );
   }
 
@@ -325,37 +327,37 @@ class _CreateProjectSheetState extends State<_CreateProjectSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('New Project', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.t('newProject'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextFormField(
               controller: _clientNameController,
-              decoration: const InputDecoration(labelText: 'Client Name'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('clientName')),
               maxLength: 100,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (v) {
                 final s = v?.trim() ?? '';
-                if (s.isEmpty) return 'Client name is required';
-                if (s.length > 100) return 'Maximum 100 characters';
+                if (s.isEmpty) return AppLocalizations.t('errors.clientNameRequired');
+                if (s.length > 100) return AppLocalizations.t1('errors.maxLength', {'n': '100'});
                 return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _projectNameController,
-              decoration: const InputDecoration(labelText: 'Project Name'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('projectName')),
               maxLength: 100,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (v) {
                 final s = v?.trim() ?? '';
-                if (s.isEmpty) return 'Project name is required';
-                if (s.length > 100) return 'Maximum 100 characters';
+                if (s.isEmpty) return AppLocalizations.t('errors.projectNameRequired');
+                if (s.length > 100) return AppLocalizations.t1('errors.maxLength', {'n': '100'});
                 return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _rateController,
-              decoration: InputDecoration(labelText: 'Hourly Rate (${CurrencyFormat.symbol()})'),
+              decoration: InputDecoration(labelText: '${AppLocalizations.t('hourlyRate')} (${CurrencyFormat.symbol()})'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               autovalidateMode: AutovalidateMode.onUserInteraction,
               inputFormatters: [
@@ -363,21 +365,21 @@ class _CreateProjectSheetState extends State<_CreateProjectSheet> {
               ],
               validator: (v) {
                 final val = double.tryParse(v?.trim() ?? '');
-                if (val == null || val <= 0) return 'Enter a valid rate (> 0)';
+                if (val == null || val <= 0) return AppLocalizations.t('errors.invalidRate');
                 return null;
               },
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Client Email (optional)'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('clientEmailOptional')),
               keyboardType: TextInputType.emailAddress,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: (v) {
                 final email = v?.trim() ?? '';
                 if (email.isEmpty) return null; // optional
                 if (!RegExp(r'^[\w.+-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
-                  return 'Enter a valid email address';
+                  return AppLocalizations.t('errors.invalidEmail');
                 }
                 return null;
               },
@@ -394,7 +396,7 @@ class _CreateProjectSheetState extends State<_CreateProjectSheet> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Create Project'),
+                    : Text(AppLocalizations.t('createProject')),
               ),
             ),
             const SizedBox(height: 16),

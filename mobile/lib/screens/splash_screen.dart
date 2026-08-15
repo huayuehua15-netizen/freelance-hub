@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -42,8 +43,8 @@ class _SplashScreenState extends State<SplashScreen> {
               child: const Icon(Icons.timer_outlined, size: 48, color: AppTheme.primary),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Freelance Hub',
+            Text(
+              AppLocalizations.t('appTitle'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 28,
@@ -51,8 +52,8 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Track. Bill. Tax.',
+            Text(
+              AppLocalizations.t('splashTagline'),
               style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
           ],

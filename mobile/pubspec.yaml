@@ -27,6 +27,8 @@ dependencies:
   # PDF
   pdf: ^3.10.8
   printing: ^5.12.0
+  # 分享(JSON 导出用 share_plus,不再误用 printing 通道)
+  share_plus: ^10.0.0
   # 图表
   fl_chart: ^0.68.0
   # 后台任务

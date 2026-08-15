@@ -15,21 +15,21 @@
 
     <div class="charts-row">
       <el-card class="chart-card">
-        <h3>Monthly Income Trend</h3>
+        <h3>{{ t('dashboard.monthlyIncomeTrend') }}</h3>
         <div ref="incomeChartRef" class="chart"></div>
       </el-card>
       <el-card class="chart-card">
-        <h3>Monthly Expenses</h3>
+        <h3>{{ t('dashboard.monthlyExpenses') }}</h3>
         <div ref="expenseBarRef" class="chart"></div>
       </el-card>
     </div>
     <div class="charts-row">
       <el-card class="chart-card">
-        <h3>Expense by Category</h3>
+        <h3>{{ t('dashboard.expenseByCategory') }}</h3>
         <div ref="expenseChartRef" class="chart"></div>
       </el-card>
       <el-card class="chart-card">
-        <h3>Income by Project</h3>
+        <h3>{{ t('dashboard.incomeByProject') }}</h3>
         <div ref="projectBarRef" class="chart"></div>
       </el-card>
     </div>
@@ -37,18 +37,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { reportApi } from '../api'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const { t, locale } = useI18n()
+
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const MONTHS_ZH = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 const year = ref(new Date().getFullYear())
 const years = [year.value - 2, year.value - 1, year.value, year.value + 1].sort((a, b) => a - b)
 
 const loading = ref(false)
 const metrics = ref([])
+const lastData = ref(null)
 
 const incomeChartRef = ref(null)
 const expenseBarRef = ref(null)
@@ -69,24 +74,39 @@ const loadData = async () => {
   try {
     const res = await reportApi.getAnnual({ year: year.value })
     const d = res.data
+    lastData.value = d
     metrics.value = [
-      { label: 'Annual Income', value: money(d.totalBillableAmount), color: '#10B981' },
-      { label: 'Total Hours', value: `${(Number(d.totalBillableHours) || 0).toFixed(1)}h`, color: '#2563EB' },
-      { label: 'Total Expenses', value: money(d.totalExpenses), color: '#F59E0B' },
-      { label: 'Tax Deductible', value: money(d.taxDeductibleExpenses), color: '#10B981' },
-      { label: 'Net Income', value: money(d.netIncome), color: '#2563EB' },
+      { label: t('dashboard.annualIncome'), value: money(d.totalBillableAmount), color: '#10B981' },
+      { label: t('dashboard.totalHours'), value: `${(Number(d.totalBillableHours) || 0).toFixed(1)}h`, color: '#2563EB' },
+      { label: t('dashboard.totalExpenses'), value: money(d.totalExpenses), color: '#F59E0B' },
+      { label: t('dashboard.taxDeductible'), value: money(d.taxDeductibleExpenses), color: '#10B981' },
+      { label: t('dashboard.netIncome'), value: money(d.netIncome), color: '#2563EB' },
     ]
     renderCharts(d)
   } catch (e) {
-    ElMessage.error(e.response?.data?.msg || 'Failed to load report')
+    ElMessage.error(e.response?.data?.msg || t('dashboard.loadFailed'))
   } finally {
     loading.value = false
   }
 }
 
+// 语言切换时刷新 metrics 标签和图表月份
+watch(locale, () => {
+  if (!lastData.value) return
+  metrics.value = [
+    { label: t('dashboard.annualIncome'), value: money(lastData.value.totalBillableAmount), color: '#10B981' },
+    { label: t('dashboard.totalHours'), value: `${(Number(lastData.value.totalBillableHours) || 0).toFixed(1)}h`, color: '#2563EB' },
+    { label: t('dashboard.totalExpenses'), value: money(lastData.value.totalExpenses), color: '#F59E0B' },
+    { label: t('dashboard.taxDeductible'), value: money(lastData.value.taxDeductibleExpenses), color: '#10B981' },
+    { label: t('dashboard.netIncome'), value: money(lastData.value.netIncome), color: '#2563EB' },
+  ]
+  renderCharts(lastData.value)
+})
+
 const renderCharts = (d) => {
   const monthly = d.monthlyTrend || []
-  const labels = monthly.map((m) => MONTHS[(m.month - 1) % 12])
+  const months = locale.value === 'zh' ? MONTHS_ZH : MONTHS_EN
+  const labels = monthly.map((m) => months[(m.month - 1) % 12])
 
   const incomeChart = getChart(incomeChartRef)
   if (incomeChart) {

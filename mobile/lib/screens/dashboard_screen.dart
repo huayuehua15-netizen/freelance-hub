@@ -14,7 +14,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: Text(AppLocalizations.t('dashboard')),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -61,7 +61,7 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('This Month', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+            Text(AppLocalizations.t('thisMonth'), style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -138,23 +138,23 @@ class DashboardScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Recent Time Logs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(AppLocalizations.t('recentTimeLogs'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/monthly-report'),
-                  child: const Text('View All'),
+                  child: Text(AppLocalizations.t('viewAll')),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             if (recent.isEmpty)
-              _emptyHint('No time logs yet')
+              _emptyHint(AppLocalizations.t('noTimeLogs'))
             else
               ...recent.map((t) {
                 final p = project.getProjectById(t.projectId);
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  title: Text(p?.projectName ?? 'Unknown project'),
+                  title: Text(p?.projectName ?? AppLocalizations.t('unknownProject')),
                   subtitle: Text(
                     '${t.duration.toStringAsFixed(1)}h${t.tag.isNotEmpty ? ' · ${t.tag}' : ''}',
                   ),
@@ -183,16 +183,16 @@ class DashboardScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Recent Expenses', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(AppLocalizations.t('recentExpenses'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/expenses'),
-                  child: const Text('View All'),
+                  child: Text(AppLocalizations.t('viewAll')),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             if (recent.isEmpty)
-              _emptyHint('No expenses yet')
+              _emptyHint(AppLocalizations.t('noExpenses'))
             else
               ...recent.map((e) {
                 return ListTile(

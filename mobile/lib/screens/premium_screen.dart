@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
 
@@ -12,7 +13,7 @@ class PremiumScreen extends StatelessWidget {
     final premium = context.watch<PremiumProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Upgrade to Premium')),
+      appBar: AppBar(title: Text(AppLocalizations.t('upgradeToPremium'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -21,57 +22,57 @@ class PremiumScreen extends StatelessWidget {
           if (premium.isTrial) const SizedBox(height: 16),
           // Free 档
           _buildPlanCard(
-            title: 'Free',
+            title: AppLocalizations.t('free'),
             price: '\$0',
-            subtitle: 'Forever free',
-            features: const [
-              'Up to 3 client projects',
-              'Current month data only',
-              'Time tracking with tags',
-              'Expense tracking',
-              'Basic reports',
+            subtitle: AppLocalizations.t('foreverFree'),
+            features: [
+              AppLocalizations.t('feature.free.projects'),
+              AppLocalizations.t('feature.free.currentMonthOnly'),
+              AppLocalizations.t('feature.timeTrackingWithTags'),
+              AppLocalizations.t('feature.expenseTracking'),
+              AppLocalizations.t('feature.basicReports'),
             ],
             isSelected: premium.premiumType == PremiumType.free,
             onTap: () => _switchPlan(context, premium, PremiumType.free),
-            cta: premium.premiumType == PremiumType.free ? 'Current Plan' : 'Switch to Free',
+            cta: premium.premiumType == PremiumType.free ? AppLocalizations.t('currentPlan') : AppLocalizations.t('switchToFree'),
           ),
           const SizedBox(height: 16),
           // 月度订阅
           _buildPlanCard(
-            title: 'Freelancer',
+            title: AppLocalizations.t('planFreelancer'),
             price: '\$4.79/month',
-            subtitle: '7-day free trial',
-            features: const [
-              'Unlimited client projects',
-              'Time tracking with tags',
-              'Tax-deductible expense tracking',
-              'Monthly reports with charts',
-              'Local PDF export',
-              'Full history access',
+            subtitle: AppLocalizations.t('sevenDayFreeTrial'),
+            features: [
+              AppLocalizations.t('feature.unlimitedProjects'),
+              AppLocalizations.t('feature.timeTrackingWithTags'),
+              AppLocalizations.t('feature.taxDeductibleExpenseTracking'),
+              AppLocalizations.t('feature.monthlyReportsWithCharts'),
+              AppLocalizations.t('feature.localPdfExport'),
+              AppLocalizations.t('feature.fullHistoryAccess'),
             ],
             isSelected: premium.premiumType == PremiumType.monthly,
             onTap: () => _switchPlan(context, premium, PremiumType.monthly),
-            cta: premium.premiumType == PremiumType.monthly ? 'Current Plan' : 'Start Free Trial',
+            cta: premium.premiumType == PremiumType.monthly ? AppLocalizations.t('currentPlan') : AppLocalizations.t('startFreeTrial'),
           ),
           const SizedBox(height: 16),
           // 年度订阅
           _buildPlanCard(
-            title: 'Contractor',
+            title: AppLocalizations.t('planContractor'),
             price: '\$37.99/year',
-            subtitle: 'Save 34% • Best value',
-            features: const [
-              'Everything in Freelancer',
-              'Annual tax summary report',
-              'Cloud sync across devices',
-              'Web dashboard access',
-              'Batch project archive',
-              'Custom tax categories',
-              'Priority support',
+            subtitle: AppLocalizations.t('saveBestValue'),
+            features: [
+              AppLocalizations.t('feature.everythingInFreelancer'),
+              AppLocalizations.t('feature.annualTaxSummaryReport'),
+              AppLocalizations.t('feature.cloudSyncAcrossDevices'),
+              AppLocalizations.t('feature.webDashboardAccess'),
+              AppLocalizations.t('feature.batchProjectArchive'),
+              AppLocalizations.t('feature.customTaxCategories'),
+              AppLocalizations.t('feature.prioritySupport'),
             ],
             isSelected: premium.premiumType == PremiumType.annual,
             highlighted: true,
             onTap: () => _switchPlan(context, premium, PremiumType.annual),
-            cta: premium.premiumType == PremiumType.annual ? 'Current Plan' : 'Get Annual Plan',
+            cta: premium.premiumType == PremiumType.annual ? AppLocalizations.t('currentPlan') : AppLocalizations.t('getAnnualPlan'),
           ),
           const SizedBox(height: 24),
           // 恢复购买
@@ -81,23 +82,23 @@ class PremiumScreen extends StatelessWidget {
                 await premium.restorePurchases();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Purchases restored.')),
+                    SnackBar(content: Text(AppLocalizations.t('purchasesRestored'))),
                   );
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Unable to restore purchases: $e')),
+                    SnackBar(content: Text(AppLocalizations.t1('errors.restoreFailed', {'error': '$e'}))),
                   );
                 }
               }
             },
-            child: const Text('Restore Purchases'),
+            child: Text(AppLocalizations.t('restorePurchase')),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Payment will be charged to your Google Play account. Subscription auto-renews unless canceled at least 24 hours before the end of the current period.',
-            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          Text(
+            AppLocalizations.t('paymentTerms'),
+            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -110,7 +111,7 @@ class PremiumScreen extends StatelessWidget {
   Future<void> _switchPlan(BuildContext context, PremiumProvider premium, PremiumType type) async {
     if (type == PremiumType.free) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You can manage or cancel a subscription in Google Play.')),
+        SnackBar(content: Text(AppLocalizations.t('manageSubscriptionHint'))),
       );
       return;
     }
@@ -122,13 +123,13 @@ class PremiumScreen extends StatelessWidget {
       }
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Purchase complete. Your access has been updated.')),
+        SnackBar(content: Text(AppLocalizations.t('purchaseComplete'))),
       );
       Navigator.pop(context);
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Purchase could not be completed: $e')),
+        SnackBar(content: Text(AppLocalizations.t1('errors.purchaseFailed', {'error': '$e'}))),
       );
     }
   }
@@ -149,7 +150,7 @@ class PremiumScreen extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Your free trial ends in $daysLeft day(s). Upgrade to keep premium features.',
+              '${AppLocalizations.t1('daysLeft', {'days': '$daysLeft'})}. ${AppLocalizations.t('upgradeToKeepFeatures')}',
               style: const TextStyle(fontSize: 13, color: AppTheme.warning),
             ),
           ),
@@ -188,7 +189,7 @@ class PremiumScreen extends StatelessWidget {
                   color: AppTheme.primary,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('MOST POPULAR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                child: Text(AppLocalizations.t('mostPopular'), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             const SizedBox(height: 8),
             Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -229,22 +230,22 @@ class PremiumScreen extends StatelessWidget {
     return Column(
       children: [
         const Divider(),
-        const Text('DEMO CONTROLS (Sandbox only)', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+        Text(AppLocalizations.t('demoControls'), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           children: [
             OutlinedButton(
               onPressed: () => premium.setPremiumTypeForDemo(PremiumType.free),
-              child: const Text('Free'),
+              child: Text(AppLocalizations.t('free')),
             ),
             OutlinedButton(
               onPressed: () => premium.setPremiumTypeForDemo(PremiumType.monthly),
-              child: const Text('Monthly'),
+              child: Text(AppLocalizations.t('monthly')),
             ),
             OutlinedButton(
               onPressed: () => premium.setPremiumTypeForDemo(PremiumType.annual),
-              child: const Text('Annual'),
+              child: Text(AppLocalizations.t('annual')),
             ),
           ],
         ),

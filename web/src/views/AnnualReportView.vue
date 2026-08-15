@@ -2,60 +2,60 @@
   <div class="annual-report">
     <el-card class="summary-card" v-loading="loading">
       <div class="report-header">
-        <h2>Annual Tax Summary — {{ selectedYear }}</h2>
+        <h2>{{ t('report.annualTitle', { year: selectedYear }) }}</h2>
         <el-select v-model="selectedYear" style="width: 120px" @change="loadReport">
           <el-option v-for="y in years" :key="y" :label="y" :value="y" />
         </el-select>
       </div>
       <div class="summary-grid">
         <div class="summary-item">
-          <div class="label">Total Income</div>
+          <div class="label">{{ t('report.totalIncome') }}</div>
           <div class="value success">${{ fmt(report.totalBillableAmount) }}</div>
         </div>
         <div class="summary-item">
-          <div class="label">Total Hours</div>
+          <div class="label">{{ t('report.totalHours') }}</div>
           <div class="value">{{ fmtHours(report.totalBillableHours) }}h</div>
         </div>
         <div class="summary-item">
-          <div class="label">Total Expenses</div>
+          <div class="label">{{ t('report.totalExpenses') }}</div>
           <div class="value warning">${{ fmt(report.totalExpenses) }}</div>
         </div>
         <div class="summary-item">
-          <div class="label">Tax Deductible</div>
+          <div class="label">{{ t('report.taxDeductible') }}</div>
           <div class="value success">${{ fmt(report.taxDeductibleExpenses) }}</div>
         </div>
         <div class="summary-item">
-          <div class="label">Net Income</div>
+          <div class="label">{{ t('report.netIncome') }}</div>
           <div class="value primary">${{ fmt(report.netIncome) }}</div>
         </div>
         <div class="summary-item">
-          <div class="label">Est. SE Tax (15.3%)</div>
+          <div class="label">{{ t('report.estSeTax') }}</div>
           <div class="value danger">${{ fmt(report.estimatedSelfEmploymentTax) }}</div>
         </div>
       </div>
     </el-card>
 
     <el-card class="quarter-card" v-loading="loading" style="margin-top: 24px">
-      <h3>Quarterly Breakdown</h3>
+      <h3>{{ t('report.quarterlyBreakdown') }}</h3>
       <el-table :data="report.quarters || []" stripe>
-        <el-table-column prop="quarter" label="Quarter" />
-        <el-table-column label="Hours">
+        <el-table-column prop="quarter" :label="t('report.quarter')" />
+        <el-table-column :label="t('report.hours')">
           <template #default="{ row }">{{ fmtHours(row.totalBillableHours) }}h</template>
         </el-table-column>
-        <el-table-column label="Income">
+        <el-table-column :label="t('report.income')">
           <template #default="{ row }">${{ fmt(row.totalBillableAmount) }}</template>
         </el-table-column>
-        <el-table-column label="Expenses">
+        <el-table-column :label="t('report.expenses')">
           <template #default="{ row }">${{ fmt(row.totalExpenses) }}</template>
         </el-table-column>
-        <el-table-column label="Deductible">
+        <el-table-column :label="t('report.deductible')">
           <template #default="{ row }">${{ fmt(row.taxDeductibleExpenses) }}</template>
         </el-table-column>
       </el-table>
     </el-card>
 
     <el-card class="disclaimer" style="margin-top: 24px">
-      <p><strong>DISCLAIMER:</strong> This report is for record-keeping purposes only and does not constitute tax advice. Please consult a certified tax professional for filing advice.</p>
+      <p><strong>{{ t('report.disclaimerStrong') }}</strong> {{ t('report.disclaimerBody') }}</p>
     </el-card>
   </div>
 </template>
@@ -63,7 +63,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { reportApi } from '../api'
+
+const { t } = useI18n()
 
 const selectedYear = ref(new Date().getFullYear())
 const years = [selectedYear.value - 1, selectedYear.value, selectedYear.value + 1].sort((a, b) => a - b)
@@ -79,7 +82,7 @@ const loadReport = async () => {
     const res = await reportApi.getAnnual({ year: selectedYear.value })
     report.value = res.data
   } catch (e) {
-    ElMessage.error(e.response?.data?.msg || 'Failed to load annual report')
+    ElMessage.error(e.response?.data?.msg || t('report.loadFailed'))
   } finally {
     loading.value = false
   }

@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/auth_provider.dart';
 import '../providers/premium_provider.dart';
 import '../providers/locale_provider.dart';
@@ -38,60 +37,60 @@ class SettingsScreen extends StatelessWidget {
     final localeProvider = context.watch<LocaleProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(AppLocalizations.t('settings'))),
       body: ListView(
         children: [
           // 账户信息（占位，登录功能后接）
           ListTile(
             leading: const CircleAvatar(child: Icon(Icons.person)),
-            title: Text(auth.isLoggedIn ? (auth.user?.userName.isNotEmpty == true ? auth.user!.userName : 'User') : 'Not signed in'),
-            subtitle: Text(auth.user?.userEmail ?? 'Sign in to sync your data'),
+            title: Text(auth.isLoggedIn ? (auth.user?.userName.isNotEmpty == true ? auth.user!.userName : 'User') : AppLocalizations.t('notSignedIn')),
+            subtitle: Text(auth.user?.userEmail ?? AppLocalizations.t('signInToSyncHint')),
           ),
           const Divider(),
           // 偏好设置
-          const _SectionHeader('Preferences'),
+          _SectionHeader(AppLocalizations.t('preferences')),
           ListTile(
             leading: const Icon(Icons.attach_money),
-            title: const Text('Currency'),
+            title: Text(AppLocalizations.t('currency')),
             subtitle: Text(auth.user?.currency ?? 'USD'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showCurrencyPicker(context),
           ),
           ListTile(
             leading: const Icon(Icons.schedule),
-            title: const Text('Timezone'),
+            title: Text(AppLocalizations.t('timezone')),
             subtitle: Text(auth.user?.timezone ?? 'America/New_York'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showTimezonePicker(context),
           ),
           ListTile(
             leading: const Icon(Icons.language),
-            title: const Text('Language'),
+            title: Text(AppLocalizations.t('language')),
             subtitle: Text(AppLocalizations.isZh ? AppLocalizations.t('chinese') : AppLocalizations.t('english')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLanguagePicker(context, localeProvider),
           ),
           const Divider(),
           // 数据管理
-          const _SectionHeader('Data Management'),
+          _SectionHeader(AppLocalizations.t('dataManagement')),
           ListTile(
             leading: const Icon(Icons.download_outlined),
-            title: const Text('Export Data'),
-            subtitle: const Text('Download all your data (JSON)'),
+            title: Text(AppLocalizations.t('exportData')),
+            subtitle: Text(AppLocalizations.t('exportDataHint')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _exportData(context),
           ),
           ListTile(
             leading: const Icon(Icons.cleaning_services_outlined),
-            title: const Text('Clear Cache'),
-            subtitle: const Text('Clear local cached data'),
+            title: Text(AppLocalizations.t('clearCache')),
+            subtitle: Text(AppLocalizations.t('clearCacheHint')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _confirmClearCache(context),
           ),
           ListTile(
             leading: const Icon(Icons.cloud_sync_outlined),
-            title: const Text('Cloud Sync'),
-            subtitle: Text(premium.isAnnual && auth.isLoggedIn ? 'Enabled' : 'Requires an Annual account'),
+            title: Text(AppLocalizations.t('cloudSync')),
+            subtitle: Text(premium.isAnnual && auth.isLoggedIn ? AppLocalizations.t('enabled') : AppLocalizations.t('requiresAnnualAccount')),
             trailing: const Icon(Icons.chevron_right),
             onTap: premium.isAnnual && auth.isLoggedIn
                 ? () => _manualSync(context)
@@ -99,39 +98,39 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
           // 订阅管理
-          const _SectionHeader('Subscription'),
+          _SectionHeader(AppLocalizations.t('subscription')),
           ListTile(
             leading: const Icon(Icons.workspace_premium_outlined),
-            title: const Text('Subscription'),
+            title: Text(AppLocalizations.t('subscription')),
             subtitle: Text(premium.isPremium
-                ? (premium.isAnnual ? 'Contractor (Annual)' : 'Freelancer (Monthly)')
-                : 'Free Plan'),
+                ? (premium.isAnnual ? AppLocalizations.t('planContractorAnnual') : AppLocalizations.t('planFreelancerMonthly'))
+                : AppLocalizations.t('freePlan')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(context, '/premium'),
           ),
           const Divider(),
           // 关于
-          const _SectionHeader('About'),
+          _SectionHeader(AppLocalizations.t('about')),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('Version'),
+            title: Text(AppLocalizations.t('version')),
             subtitle: Text('${AppConfig.appVersion} (${AppConfig.environment})'),
           ),
           ListTile(
             leading: const Icon(Icons.help_outline),
-            title: const Text('Help & Support'),
+            title: Text(AppLocalizations.t('helpAndSupport')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLegalDoc(context, LegalDocType.helpSupport),
           ),
           ListTile(
             leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Privacy Policy'),
+            title: Text(AppLocalizations.t('privacyPolicy')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLegalDoc(context, LegalDocType.privacyPolicy),
           ),
           ListTile(
             leading: const Icon(Icons.description_outlined),
-            title: const Text('Terms of Service'),
+            title: Text(AppLocalizations.t('termsOfService')),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showLegalDoc(context, LegalDocType.termsOfService),
           ),
@@ -140,7 +139,7 @@ class SettingsScreen extends StatelessWidget {
           if (auth.isLoggedIn) ...[
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.danger),
-              title: const Text('Sign Out', style: TextStyle(color: AppTheme.danger)),
+              title: Text(AppLocalizations.t('logout'), style: const TextStyle(color: AppTheme.danger)),
               onTap: () async {
                 await auth.logout();
                 if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
@@ -148,7 +147,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete_forever, color: AppTheme.danger),
-              title: const Text('Delete Account', style: TextStyle(color: AppTheme.danger)),
+              title: Text(AppLocalizations.t('deleteAccount'), style: const TextStyle(color: AppTheme.danger)),
               onTap: () => _confirmDeleteAccount(context),
             ),
           ],
@@ -186,7 +185,7 @@ class SettingsScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete account: $e')),
+          SnackBar(content: Text(AppLocalizations.t1('errors.deleteAccountFailed', {'error': '$e'}))),
         );
       }
     }
@@ -195,18 +194,19 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _exportData(BuildContext context) async {
     try {
       final json = DataExport.toJsonString();
-      final bytes = Uint8List.fromList(utf8.encode(json));
       final filename = 'freelance_hub_export_${DateTime.now().millisecondsSinceEpoch}.json';
-      final ok = await Printing.sharePdf(bytes: bytes, filename: filename);
-      if (!ok && context.mounted) {
+      // 修复 M1:此前用 Printing.sharePdf 分享 JSON,语义错配(PDF 通道分享文本)
+      // 改用 share_plus 的 Share.share 分享 JSON 文本,subject 提供文件名建议
+      await Share.share(json, subject: filename);
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export cancelled')),
+          SnackBar(content: Text(AppLocalizations.t('dataExported'))),
         );
       }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export failed')),
+          SnackBar(content: Text(AppLocalizations.t('exportFailed'))),
         );
       }
     }
@@ -217,7 +217,7 @@ class SettingsScreen extends StatelessWidget {
     final userId = context.read<AuthProvider>().user?.userId;
     if (userId == null || userId == 'local_user') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in with an Annual account to sync.')),
+        SnackBar(content: Text(AppLocalizations.t('signInToSyncAnnualHint'))),
       );
       return;
     }
@@ -227,7 +227,7 @@ class SettingsScreen extends StatelessWidget {
       final ok = sync.status == SyncStatus.success;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok ? 'Sync completed' : 'Sync failed: ${sync.lastError ?? 'unknown error'}'),
+          content: Text(ok ? AppLocalizations.t('syncCompleted') : AppLocalizations.t1('syncFailed', {'error': sync.lastError ?? AppLocalizations.t('errors.unknown')})),
         ),
       );
     }
@@ -287,7 +287,7 @@ class SettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('English'),
+              title: Text(AppLocalizations.t('english')),
               trailing: localeProvider.locale.languageCode == 'en'
                   ? const Icon(Icons.check, color: AppTheme.primary)
                   : null,
@@ -297,7 +297,7 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
             ListTile(
-              title: const Text('中文'),
+              title: Text(AppLocalizations.t('chinese')),
               trailing: localeProvider.locale.languageCode == 'zh'
                   ? const Icon(Icons.check, color: AppTheme.primary)
                   : null,
@@ -316,15 +316,15 @@ class SettingsScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear Cache'),
-        content: const Text(
-          'This will remove unused receipt images. Your projects, time logs and expenses will NOT be deleted. Continue?',
+        title: Text(AppLocalizations.t('clearCache')),
+        content: Text(
+          AppLocalizations.t('clearCacheConfirm'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.t('cancel'))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Clear', style: TextStyle(color: AppTheme.danger)),
+            child: Text(AppLocalizations.t('clear'), style: const TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -352,7 +352,7 @@ class SettingsScreen extends StatelessWidget {
     }
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(removed > 0 ? 'Cleared $removed cached file(s)' : 'No cache to clear')),
+        SnackBar(content: Text(removed > 0 ? AppLocalizations.t1('clearedNCachedFiles', {'n': '$removed'}) : AppLocalizations.t('noCacheToClear'))),
       );
     }
   }
@@ -404,36 +404,36 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Delete Account'),
+      title: Text(AppLocalizations.t('deleteAccount')),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'This will schedule your account for permanent deletion.',
-              style: TextStyle(fontWeight: FontWeight.w500),
+            Text(
+              AppLocalizations.t('deleteAccountSchedule'),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 12),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.warning_amber_rounded, color: AppTheme.danger, size: 20),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'All your data will be permanently removed after a 30-day grace period.',
-                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                    AppLocalizations.t('deleteAccountGracePeriod'),
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'To restore your account during the 30-day period, you must contact support@freelancehub.app. This action cannot be undone from the app.',
-              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            Text(
+              AppLocalizations.t('deleteAccountRestore'),
+              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 16),
-            const Text('Type DELETE to confirm:'),
+            Text(AppLocalizations.t('typeDeleteToConfirm')),
             const SizedBox(height: 8),
             TextField(
               controller: _controller,
@@ -449,12 +449,12 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.t('cancel')),
         ),
         TextButton(
           onPressed: _canConfirm ? () => Navigator.pop(context, true) : null,
           style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
-          child: const Text('Delete Account'),
+          child: Text(AppLocalizations.t('deleteAccount')),
         ),
       ],
     );

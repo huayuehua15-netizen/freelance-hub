@@ -4,6 +4,7 @@ import '../models/time_log.dart';
 import '../providers/timelog_provider.dart';
 import '../providers/project_provider.dart';
 import '../config/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/currency_format.dart';
 
 class TimeLogEditScreen extends StatefulWidget {
@@ -58,7 +59,7 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
     // 保证当前项目始终在可选项里（含已归档、甚至未知项目）
     final items = <DropdownMenuItem<String?>>[
       if (_projectId != null && !projects.any((p) => p.projectId == _projectId))
-        DropdownMenuItem<String?>(value: _projectId, child: const Text('Unknown project')),
+        DropdownMenuItem<String?>(value: _projectId, child: Text(AppLocalizations.t('unknownProject'))),
       ...projects.map((p) => DropdownMenuItem<String?>(
             value: p.projectId,
             child: Text(p.projectName),
@@ -66,50 +67,50 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Time Log')),
+      appBar: AppBar(title: Text(AppLocalizations.t('editTimeLog'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           DropdownButtonFormField<String?>(
             value: _projectId,
-            decoration: const InputDecoration(labelText: 'Project'),
+            decoration: InputDecoration(labelText: AppLocalizations.t('project')),
             items: items,
             onChanged: (v) => setState(() => _projectId = v),
           ),
           const SizedBox(height: 16),
-          _buildDateTimeTile('Start Time', _start, (d) => setState(() => _start = d)),
-          _buildDateTimeTile('End Time', _end, (d) => setState(() => _end = d)),
+          _buildDateTimeTile(AppLocalizations.t('startTime'), _start, (d) => setState(() => _start = d)),
+          _buildDateTimeTile(AppLocalizations.t('endTime'), _end, (d) => setState(() => _end = d)),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Duration'),
-            subtitle: const Text('Auto-calculated from start & end'),
+            title: Text(AppLocalizations.t('duration')),
+            subtitle: Text(AppLocalizations.t('durationAutoCalculated')),
             trailing: Text('${_durationHours.toStringAsFixed(2)}h',
                 style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Billable Amount'),
-            subtitle: const Text('Duration × hourly rate'),
+            title: Text(AppLocalizations.t('billableAmount')),
+            subtitle: Text(AppLocalizations.t('billableAmountHint')),
             trailing: Text(CurrencyFormat.money(amount),
                 style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.success)),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Billable'),
+            title: Text(AppLocalizations.t('billable')),
             value: _isBillable,
             onChanged: (v) => setState(() => _isBillable = v),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _tagController,
-            decoration: const InputDecoration(labelText: 'Tag (optional)'),
+            decoration: InputDecoration(labelText: AppLocalizations.t('tagOptional')),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _noteController,
-            decoration: const InputDecoration(
-              labelText: 'Note (optional)',
-              helperText: 'Max 500 characters',
+            decoration: InputDecoration(
+              labelText: AppLocalizations.t('noteOptional'),
+              helperText: AppLocalizations.t1('maxChars', {'n': '500'}),
               counterText: '',
             ),
             maxLength: 500,
@@ -120,14 +121,14 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
             height: 56,
             child: ElevatedButton(
               onPressed: _save,
-              child: const Text('Save Changes', style: TextStyle(fontSize: 16)),
+              child: Text(AppLocalizations.t('saveChanges'), style: const TextStyle(fontSize: 16)),
             ),
           ),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _delete,
             icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
-            label: const Text('Delete Time Log', style: TextStyle(color: AppTheme.danger)),
+            label: Text(AppLocalizations.t('deleteTimeLog'), style: const TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -175,7 +176,7 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saved successfully')),
+        SnackBar(content: Text(AppLocalizations.t('saved'))),
       );
     }
   }
@@ -184,13 +185,13 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Time Log'),
-        content: const Text('This will remove this time log. Continue?'),
+        title: Text(AppLocalizations.t('deleteTimeLog')),
+        content: Text(AppLocalizations.t('deleteTimeLogConfirm')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.t('cancel'))),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: AppTheme.danger)),
+            child: Text(AppLocalizations.t('delete'), style: const TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),

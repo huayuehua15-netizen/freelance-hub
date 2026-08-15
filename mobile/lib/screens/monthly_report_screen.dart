@@ -14,6 +14,7 @@ import '../providers/project_provider.dart';
 import '../widgets/premium_guard.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
+import '../l10n/app_localizations.dart';
 
 class MonthlyReportScreen extends StatefulWidget {
   const MonthlyReportScreen({super.key});
@@ -46,18 +47,18 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Monthly Report'),
+        title: Text(AppLocalizations.t('monthlyReport')),
         actions: [
           IconButton(
             icon: const Icon(Icons.event_note_outlined),
-            tooltip: 'Annual Tax Summary',
+            tooltip: AppLocalizations.t('annualReport'),
             onPressed: () => Navigator.pushNamed(context, '/annual-report'),
           ),
         ],
       ),
       body: PremiumGuard(
         requiredLevel: PremiumType.monthly,
-        featureName: 'Monthly Report',
+        featureName: AppLocalizations.t('monthlyReport'),
         child: _buildContent(context),
       ),
     );
@@ -96,7 +97,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
           child: ElevatedButton.icon(
             onPressed: () => _exportPdf(context, monthLogs, monthExpenses, project),
             icon: const Icon(Icons.picture_as_pdf),
-            label: const Text('Export PDF', style: TextStyle(fontSize: 16)),
+            label: Text(AppLocalizations.t('exportPdf'), style: const TextStyle(fontSize: 16)),
           ),
         ),
       ],
@@ -138,16 +139,16 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _metric('Billable Hours', '${hours.toStringAsFixed(1)}h', AppTheme.primary),
-                _metric('Income', CurrencyFormat.money(income), AppTheme.success),
+                _metric(AppLocalizations.t('billableHours'), '${hours.toStringAsFixed(1)}h', AppTheme.primary),
+                _metric(AppLocalizations.t('income'), CurrencyFormat.money(income), AppTheme.success),
               ],
             ),
             const Divider(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _metric('Expenses', CurrencyFormat.money(expenses), AppTheme.warning),
-                _metric('Net Income', CurrencyFormat.money(net), AppTheme.primary),
+                _metric(AppLocalizations.t('expenses'), CurrencyFormat.money(expenses), AppTheme.warning),
+                _metric(AppLocalizations.t('netIncome'), CurrencyFormat.money(net), AppTheme.primary),
               ],
             ),
           ],
@@ -184,14 +185,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Income Trend', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.t('incomeTrend'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
             if (!hasData)
-              const SizedBox(
+              SizedBox(
                 height: 150,
                 child: Center(
-                  child: Text('No income data for this period',
-                      style: TextStyle(fontSize: 14)),
+                  child: Text(AppLocalizations.t('noIncomeDataForPeriod'),
+                      style: const TextStyle(fontSize: 14)),
                 ),
               )
             else
@@ -213,7 +214,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         getTooltipItems: (touchedSpots) {
                           return touchedSpots.map((spot) {
                             return LineTooltipItem(
-                              'Day ${spot.x.toInt()}\n${CurrencyFormat.money(spot.y)}',
+                              '${AppLocalizations.t1('dayTooltip', {'n': '${spot.x.toInt()}'})}\n${CurrencyFormat.money(spot.y)}',
                               TextStyle(
                                 color: AppTheme.success,
                                 fontWeight: FontWeight.w600,
@@ -260,14 +261,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Expenses by Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.t('expensesByCategory'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
             if (entries.isEmpty)
-              const SizedBox(
+              SizedBox(
                 height: 150,
                 child: Center(
-                  child: Text('No expense data for this period',
-                      style: TextStyle(fontSize: 14)),
+                  child: Text(AppLocalizations.t('noExpenseDataForPeriod'),
+                      style: const TextStyle(fontSize: 14)),
                 ),
               )
             else
@@ -335,14 +336,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Hours by Project', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.t('hoursByProject'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
             if (entries.isEmpty)
-              const SizedBox(
+              SizedBox(
                 height: 150,
                 child: Center(
-                  child: Text('No time data for this period',
-                      style: TextStyle(fontSize: 14)),
+                  child: Text(AppLocalizations.t('noTimeDataForPeriod'),
+                      style: const TextStyle(fontSize: 14)),
                 ),
               )
             else
@@ -360,7 +361,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         getTooltipColor: (_) => Theme.of(context).colorScheme.surface,
                         tooltipRoundedRadius: 8,
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          final name = project.getProjectById(entries[groupIndex].key)?.projectName ?? 'Unknown';
+                          final name = project.getProjectById(entries[groupIndex].key)?.projectName ?? AppLocalizations.t('unknown');
                           return BarTooltipItem(
                             '$name\n${rod.toY.toStringAsFixed(1)}h',
                             TextStyle(
@@ -402,7 +403,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         Container(width: 10, height: 10, color: _palette[i % _palette.length]),
                         const SizedBox(width: 4),
                         Text(
-                          '${project.getProjectById(entries[i].key)?.projectName ?? 'Unknown'} (${entries[i].value.toStringAsFixed(1)}h)',
+                          '${project.getProjectById(entries[i].key)?.projectName ?? AppLocalizations.t('unknown')} (${entries[i].value.toStringAsFixed(1)}h)',
                           style: const TextStyle(fontSize: 11),
                         ),
                       ],
@@ -431,7 +432,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to export PDF')),
+          SnackBar(content: Text(AppLocalizations.t('exportFailed'))),
         );
       }
     }
@@ -451,36 +452,36 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       build: (ctx) => [
-        pw.Text('Freelance Hub - Monthly Report',
+        pw.Text(AppLocalizations.t('monthlyPdfTitle'),
             style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
         pw.Text('${_months[_selectedMonth.month - 1]} ${_selectedMonth.year}',
             style: pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
         pw.SizedBox(height: 16),
         pw.TableHelper.fromTextArray(
-          headers: ['Metric', 'Value'],
+          headers: [AppLocalizations.t('metric'), AppLocalizations.t('value')],
           data: [
-            ['Total Hours', '${totalHours.toStringAsFixed(1)}h'],
-            ['Total Income', CurrencyFormat.money(totalIncome)],
-            ['Total Expenses', CurrencyFormat.money(totalExpenses)],
-            ['Net Income', CurrencyFormat.money(net)],
+            [AppLocalizations.t('totalHours'), '${totalHours.toStringAsFixed(1)}h'],
+            [AppLocalizations.t('totalIncome'), CurrencyFormat.money(totalIncome)],
+            [AppLocalizations.t('totalExpenses'), CurrencyFormat.money(totalExpenses)],
+            [AppLocalizations.t('netIncome'), CurrencyFormat.money(net)],
           ],
           headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           cellStyle: pw.TextStyle(fontSize: 10),
         ),
         pw.SizedBox(height: 20),
-        pw.Text('Time Logs', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLocalizations.t('timeLogs'), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         if (logs.isEmpty)
-          pw.Text('No time logs', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+          pw.Text(AppLocalizations.t('noTimeLogsPdf'), style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
         else
           pw.TableHelper.fromTextArray(
-            headers: ['Date', 'Project', 'Hours', 'Amount', 'Tag'],
+            headers: [AppLocalizations.t('date'), AppLocalizations.t('project'), AppLocalizations.t('hours'), AppLocalizations.t('amount'), AppLocalizations.t('tag')],
             data: [
               for (final t in logs)
                 [
                   _fmtDate(t.startTime),
-                  project.getProjectById(t.projectId)?.projectName ?? 'Unknown',
+                  project.getProjectById(t.projectId)?.projectName ?? AppLocalizations.t('unknown'),
                   '${t.duration.toStringAsFixed(1)}h',
                   CurrencyFormat.money(t.billableAmount),
                   t.tag,
@@ -490,13 +491,13 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             cellStyle: pw.TextStyle(fontSize: 10),
           ),
         pw.SizedBox(height: 20),
-        pw.Text('Expenses', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLocalizations.t('expenses'), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         if (expenses.isEmpty)
-          pw.Text('No expenses', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+          pw.Text(AppLocalizations.t('noExpensesPdf'), style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
         else
           pw.TableHelper.fromTextArray(
-            headers: ['Date', 'Category', 'Merchant', 'Amount', 'Deductible'],
+            headers: [AppLocalizations.t('date'), AppLocalizations.t('category'), AppLocalizations.t('merchant'), AppLocalizations.t('amount'), AppLocalizations.t('deductible')],
             data: [
               for (final e in expenses)
                 [
@@ -504,7 +505,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                   e.category,
                   e.merchant,
                   CurrencyFormat.money(e.amount),
-                  e.isTaxDeductible ? 'Yes' : 'No',
+                  e.isTaxDeductible ? AppLocalizations.t('yes') : AppLocalizations.t('no'),
                 ],
             ],
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
@@ -514,7 +515,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       footer: (ctx) => pw.Align(
         alignment: pw.Alignment.centerRight,
         child: pw.Text(
-          'Generated by Freelance Hub · ${DateTime.now().toLocal()}',
+          AppLocalizations.t1('generatedBy', {'date': '${DateTime.now().toLocal()}'}),
           style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
         ),
       ),

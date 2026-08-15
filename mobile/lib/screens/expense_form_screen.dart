@@ -9,6 +9,7 @@ import '../providers/expense_provider.dart';
 import '../providers/project_provider.dart';
 import '../services/hive_service.dart';
 import '../config/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/currency_format.dart';
 
 class ExpenseFormScreen extends StatefulWidget {
@@ -65,7 +66,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final projects = context.watch<ProjectProvider>().activeProjects;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Edit Expense' : 'Add Expense')),
+      appBar: AppBar(title: Text(_isEditing ? AppLocalizations.t('editExpense') : AppLocalizations.t('addExpenseTitle'))),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -74,7 +75,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             TextFormField(
               controller: _amountController,
               decoration: InputDecoration(
-                labelText: 'Amount',
+                labelText: AppLocalizations.t('amount'),
                 prefixText: '${CurrencyFormat.symbol()} ',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -89,14 +90,14 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
               ],
               validator: (v) {
                 final val = double.tryParse((v ?? '').trim());
-                if (val == null || val <= 0) return 'Enter a valid amount';
+                if (val == null || val <= 0) return AppLocalizations.t('errors.invalidAmount');
                 return null;
               },
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _selectedCategory,
-              decoration: const InputDecoration(labelText: 'Category'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('category')),
               items: categories
                   .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
                   .toList(),
@@ -111,12 +112,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _merchantController,
-              decoration: const InputDecoration(labelText: 'Merchant (optional)'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('merchantOptional')),
             ),
             const SizedBox(height: 16),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Date'),
+              title: Text(AppLocalizations.t('date')),
               subtitle: Text(
                 '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
               ),
@@ -134,11 +135,11 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(
               value: _selectedProjectId,
-              decoration: const InputDecoration(labelText: 'Linked Project (optional)'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('linkedProjectOptional')),
               items: [
-                const DropdownMenuItem<String?>(
+                DropdownMenuItem<String?>(
                   value: null,
-                  child: Text('None'),
+                  child: Text(AppLocalizations.t('none')),
                 ),
                 ...projects.map(
                   (p) => DropdownMenuItem<String?>(
@@ -152,15 +153,15 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Tax Deductible'),
-              subtitle: const Text('Mark this expense as business tax deductible'),
+              title: Text(AppLocalizations.t('taxDeductible')),
+              subtitle: Text(AppLocalizations.t('markTaxDeductibleHint')),
               value: _isTaxDeductible,
               onChanged: (v) => setState(() => _isTaxDeductible = v),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _noteController,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
+              decoration: InputDecoration(labelText: AppLocalizations.t('noteOptional')),
               maxLines: 2,
             ),
             const SizedBox(height: 16),
@@ -171,7 +172,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
               child: ElevatedButton(
                 onPressed: _saveExpense,
                 child: Text(
-                  _isEditing ? 'Save Changes' : 'Save Expense',
+                  _isEditing ? AppLocalizations.t('saveChanges') : AppLocalizations.t('saveExpense'),
                   style: const TextStyle(fontSize: 16),
                 ),
               ),
@@ -189,7 +190,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         OutlinedButton.icon(
           onPressed: _showReceiptSource,
           icon: const Icon(Icons.add_a_photo_outlined),
-          label: Text(_receiptUrl == null ? 'Add Receipt' : 'Change Receipt'),
+          label: Text(_receiptUrl == null ? AppLocalizations.t('addReceipt') : AppLocalizations.t('changeReceipt')),
         ),
         if (_receiptUrl != null) ...[
           const SizedBox(height: 8),
@@ -217,7 +218,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take Photo'),
+              title: Text(AppLocalizations.t('takePhoto')),
               onTap: () {
                 Navigator.pop(context);
                 _pickReceipt(ImageSource.camera);
@@ -225,7 +226,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from Gallery'),
+              title: Text(AppLocalizations.t('chooseFromGallery')),
               onTap: () {
                 Navigator.pop(context);
                 _pickReceipt(ImageSource.gallery);
@@ -234,7 +235,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             if (_receiptUrl != null)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: AppTheme.danger),
-                title: const Text('Remove Receipt', style: TextStyle(color: AppTheme.danger)),
+                title: Text(AppLocalizations.t('removeReceipt'), style: const TextStyle(color: AppTheme.danger)),
                 onTap: () {
                   Navigator.pop(context);
                   setState(() => _receiptUrl = null);
@@ -265,7 +266,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to attach receipt')),
+          SnackBar(content: Text(AppLocalizations.t('errors.attachReceiptFailed'))),
         );
       }
     }

@@ -13,6 +13,7 @@ import '../providers/expense_provider.dart';
 import '../widgets/premium_guard.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
+import '../l10n/app_localizations.dart';
 
 class AnnualReportScreen extends StatelessWidget {
   const AnnualReportScreen({super.key});
@@ -27,10 +28,10 @@ class AnnualReportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Annual Tax Summary')),
+      appBar: AppBar(title: Text(AppLocalizations.t('annualReport'))),
       body: PremiumGuard(
         requiredLevel: PremiumType.annual,
-        featureName: 'Annual Tax Report',
+        featureName: AppLocalizations.t('annualTaxReportFeature'),
         child: _buildContent(context),
       ),
     );
@@ -64,9 +65,9 @@ class AnnualReportScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppTheme.danger.withOpacity(0.2)),
           ),
-          child: const Text(
-            'DISCLAIMER: This report is for record-keeping purposes only and does not constitute tax advice. Consult a certified tax professional.',
-            style: TextStyle(fontSize: 12, color: AppTheme.danger),
+          child: Text(
+            AppLocalizations.t('disclaimerPdf'),
+            style: const TextStyle(fontSize: 12, color: AppTheme.danger),
           ),
         ),
         const SizedBox(height: 16),
@@ -81,7 +82,7 @@ class AnnualReportScreen extends StatelessWidget {
           child: ElevatedButton.icon(
             onPressed: () => _exportPdf(context, yearLogs, yearExpenses, year),
             icon: const Icon(Icons.picture_as_pdf),
-            label: const Text('Export Annual Tax Summary PDF', style: TextStyle(fontSize: 16)),
+            label: Text(AppLocalizations.t('exportAnnualTaxPdf'), style: const TextStyle(fontSize: 16)),
           ),
         ),
       ],
@@ -94,17 +95,17 @@ class AnnualReportScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _metricRow('Total Billable Hours', '${hours.toStringAsFixed(1)}h', AppTheme.primary),
+            _metricRow(AppLocalizations.t('totalBillableHours'), '${hours.toStringAsFixed(1)}h', AppTheme.primary),
             const Divider(),
-            _metricRow('Total Income', CurrencyFormat.money(income), AppTheme.success),
+            _metricRow(AppLocalizations.t('totalIncome'), CurrencyFormat.money(income), AppTheme.success),
             const Divider(),
-            _metricRow('Total Expenses', CurrencyFormat.money(expenses), AppTheme.warning),
+            _metricRow(AppLocalizations.t('totalExpenses'), CurrencyFormat.money(expenses), AppTheme.warning),
             const Divider(),
-            _metricRow('Tax Deductible Expenses', CurrencyFormat.money(deductible), AppTheme.success),
+            _metricRow(AppLocalizations.t('taxDeductibleExpenses'), CurrencyFormat.money(deductible), AppTheme.success),
             const Divider(),
-            _metricRow('Net Income', CurrencyFormat.money(net), AppTheme.primary),
+            _metricRow(AppLocalizations.t('netIncome'), CurrencyFormat.money(net), AppTheme.primary),
             const Divider(),
-            _metricRow('Est. Self-Employment Tax (15.3%)', CurrencyFormat.money(tax), AppTheme.danger),
+            _metricRow(AppLocalizations.t('estimatedSelfEmploymentTaxPct'), CurrencyFormat.money(tax), AppTheme.danger),
           ],
         ),
       ),
@@ -141,14 +142,14 @@ class AnnualReportScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Quarterly Income', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.t('quarterlyIncome'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
             if (!hasData)
-              const SizedBox(
+              SizedBox(
                 height: 180,
                 child: Center(
-                  child: Text('No data for this year',
-                      style: TextStyle(fontSize: 14)),
+                  child: Text(AppLocalizations.t('noDataForThisYear'),
+                      style: const TextStyle(fontSize: 14)),
                 ),
               )
             else
@@ -183,7 +184,7 @@ class AnnualReportScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 for (int i = 0; i < 4; i++)
-                  Text('Q${i + 1}\n${CurrencyFormat.money(quarters[i], decimals: 0)}',
+                  Text('${AppLocalizations.t1('quarterShort', {'n': '${i + 1}'})}\n${CurrencyFormat.money(quarters[i], decimals: 0)}',
                       textAlign: TextAlign.center, style: const TextStyle(fontSize: 11)),
               ],
             ),
@@ -209,14 +210,14 @@ class AnnualReportScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Monthly Income Trend', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            Text(AppLocalizations.t('monthlyIncomeTrend'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
             if (!hasData)
-              const SizedBox(
+              SizedBox(
                 height: 160,
                 child: Center(
-                  child: Text('No data for this year',
-                      style: TextStyle(fontSize: 14)),
+                  child: Text(AppLocalizations.t('noDataForThisYear'),
+                      style: const TextStyle(fontSize: 14)),
                 ),
               )
             else
@@ -264,7 +265,7 @@ class AnnualReportScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to export PDF')),
+          SnackBar(content: Text(AppLocalizations.t('exportFailed'))),
         );
       }
     }
@@ -300,33 +301,33 @@ class AnnualReportScreen extends StatelessWidget {
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       build: (ctx) => [
-        pw.Text('Freelance Hub - Annual Tax Summary',
+        pw.Text(AppLocalizations.t('annualPdfTitle'),
             style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
-        pw.Text('Tax Year $year', style: pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
+        pw.Text(AppLocalizations.t1('taxYear', {'year': '$year'}), style: pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
         pw.SizedBox(height: 16),
         pw.TableHelper.fromTextArray(
-          headers: ['Metric', 'Value'],
+          headers: [AppLocalizations.t('metric'), AppLocalizations.t('value')],
           data: [
-            ['Total Billable Hours', '${totalHours.toStringAsFixed(1)}h'],
-            ['Total Income', CurrencyFormat.money(totalIncome)],
-            ['Total Expenses', CurrencyFormat.money(totalExpenses)],
-            ['Tax Deductible Expenses', CurrencyFormat.money(deductible)],
-            ['Net Income', CurrencyFormat.money(net)],
-            ['Est. Self-Employment Tax (15.3%)', CurrencyFormat.money(estTax)],
+            [AppLocalizations.t('totalBillableHours'), '${totalHours.toStringAsFixed(1)}h'],
+            [AppLocalizations.t('totalIncome'), CurrencyFormat.money(totalIncome)],
+            [AppLocalizations.t('totalExpenses'), CurrencyFormat.money(totalExpenses)],
+            [AppLocalizations.t('taxDeductibleExpenses'), CurrencyFormat.money(deductible)],
+            [AppLocalizations.t('netIncome'), CurrencyFormat.money(net)],
+            [AppLocalizations.t('estimatedSelfEmploymentTaxPct'), CurrencyFormat.money(estTax)],
           ],
           headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           cellStyle: pw.TextStyle(fontSize: 10),
         ),
         pw.SizedBox(height: 20),
-        pw.Text('Quarterly Summary', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLocalizations.t('quarterlySummary'), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         pw.TableHelper.fromTextArray(
-          headers: ['Quarter', 'Income', 'Expenses', 'Net'],
+          headers: [AppLocalizations.t('quarter'), AppLocalizations.t('income'), AppLocalizations.t('expenses'), AppLocalizations.t('netIncome')],
           data: [
             for (int i = 0; i < 4; i++)
               [
-                'Q${i + 1}',
+                AppLocalizations.t1('quarterShort', {'n': '${i + 1}'}),
                 CurrencyFormat.money(qIncome[i]),
                 CurrencyFormat.money(qExpense[i]),
                 CurrencyFormat.money(qIncome[i] - qExpense[i]),
@@ -336,13 +337,13 @@ class AnnualReportScreen extends StatelessWidget {
           cellStyle: pw.TextStyle(fontSize: 10),
         ),
         pw.SizedBox(height: 20),
-        pw.Text('Expenses by Category', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLocalizations.t('expensesByCategory'), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         if (byCat.isEmpty)
-          pw.Text('No expenses', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+          pw.Text(AppLocalizations.t('noExpensesPdf'), style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
         else
           pw.TableHelper.fromTextArray(
-            headers: ['Category', 'Amount'],
+            headers: [AppLocalizations.t('category'), AppLocalizations.t('amount')],
             data: [
               for (final e in byCat.entries) [e.key, CurrencyFormat.money(e.value)],
             ],
@@ -351,14 +352,14 @@ class AnnualReportScreen extends StatelessWidget {
           ),
         pw.SizedBox(height: 24),
         pw.Text(
-          'DISCLAIMER: This report is for record-keeping purposes only and does not constitute tax advice. Consult a certified tax professional.',
+          AppLocalizations.t('disclaimerPdf'),
           style: pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
         ),
       ],
       footer: (ctx) => pw.Align(
         alignment: pw.Alignment.centerRight,
         child: pw.Text(
-          'Generated by Freelance Hub · ${DateTime.now().toLocal()}',
+          AppLocalizations.t1('generatedBy', {'date': '${DateTime.now().toLocal()}'}),
           style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../l10n/app_localizations.dart';
 import '../models/expense_log.dart';
 import '../providers/expense_provider.dart';
 import '../config/app_theme.dart';
@@ -39,7 +40,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 icon: const Icon(Icons.close),
                 onPressed: _exitSelectionMode,
               ),
-              title: Text('${_selectedIds.length} selected'),
+              title: Text(AppLocalizations.t1('nSelected', {'n': '${_selectedIds.length}'})),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
@@ -50,7 +51,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               ],
             )
           : AppBar(
-              title: const Text('Expenses'),
+              title: Text(AppLocalizations.t('expenses')),
               actions: [
                 IconButton(
                   icon: Icon(
@@ -63,7 +64,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   padding: const EdgeInsets.only(right: 16),
                   child: Center(
                     child: Text(
-                      'This Month ${CurrencyFormat.money(expenseProvider.totalThisMonth)}',
+                      '${AppLocalizations.t('thisMonth')} ${CurrencyFormat.money(expenseProvider.totalThisMonth)}',
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                   ),
@@ -78,7 +79,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             child: Row(
               children: [
                 FilterChip(
-                  label: const Text('Deductible Only'),
+                  label: Text(AppLocalizations.t('deductibleOnly')),
                   selected: _deductibleOnly,
                   onSelected: (v) => setState(() => _deductibleOnly = v),
                   selectedColor: AppTheme.success.withOpacity(0.15),
@@ -100,9 +101,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 : expenses.isEmpty
                     ? EmptyState(
                         icon: Icons.receipt_long_outlined,
-                        title: 'No Expenses Yet',
-                        subtitle: 'Track your business expenses and mark them as tax-deductible.',
-                        buttonText: 'Add Expense',
+                        title: AppLocalizations.t('noExpenses'),
+                        subtitle: AppLocalizations.t('noExpensesHint'),
+                        buttonText: AppLocalizations.t('addExpenseTitle'),
                         onButtonPressed: () => Navigator.pushNamed(context, '/expense-form'),
                       )
                     : RefreshIndicator(
@@ -128,7 +129,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('All Categories'),
+              title: Text(AppLocalizations.t('allCategories')),
               trailing: _selectedCategory == null ? const Icon(Icons.check, color: AppTheme.primary) : null,
               onTap: () {
                 setState(() => _selectedCategory = null);
@@ -219,7 +220,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         await expenseProvider.deleteExpense(expense.expenseId);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Expense deleted')),
+            SnackBar(content: Text(AppLocalizations.t('expenseDeleted'))),
           );
         }
         return true;
@@ -248,9 +249,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               if (expense.isTaxDeductible)
-                const Text(
-                  'Deductible',
-                  style: TextStyle(fontSize: 11, color: AppTheme.success),
+                Text(
+                  AppLocalizations.t('deductible'),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.success),
                 ),
             ],
           ),
@@ -287,10 +288,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete ${_selectedIds.length} expense(s)?'),
-        content: const Text('Expenses will be soft-deleted and hidden from lists.'),
+        title: Text(AppLocalizations.t1('deleteNExpensesConfirm', {'n': '${_selectedIds.length}'})),
+        content: Text(AppLocalizations.t('softDeleteExpensesHint')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.t('cancel'))),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
@@ -299,7 +300,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               }
               _exitSelectionMode();
             },
-            child: const Text('Delete', style: TextStyle(color: AppTheme.danger)),
+            child: Text(AppLocalizations.t('delete'), style: const TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
