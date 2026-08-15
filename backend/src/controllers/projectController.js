@@ -1,6 +1,7 @@
 const ClientProject = require('../models/ClientProject');
 const SyncService = require('../services/syncService');
 const { ERROR_CODES, FREE_PROJECT_LIMIT, PREMIUM_TYPES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const batchUpsert = async (req, res, next) => {
   try {
@@ -8,7 +9,7 @@ const batchUpsert = async (req, res, next) => {
     if (!Array.isArray(projects)) {
       return res.status(400).json({
         code: ERROR_CODES.BAD_REQUEST,
-        msg: 'projects must be an array',
+        msg: t('errors.sync.projectsArrayRequired', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -21,7 +22,7 @@ const batchUpsert = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: result,
       timestamp: Date.now(),
     });
@@ -40,7 +41,7 @@ const pull = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: result,
       timestamp: Date.now(),
     });
@@ -59,7 +60,7 @@ const list = async (req, res, next) => {
       const allProjects = await ClientProject.find(query).sort({ serverUpdateTime: -1 });
       return res.status(200).json({
         code: ERROR_CODES.SUCCESS,
-        msg: 'success',
+        msg: t('common.success', req.lang),
         data: {
           projects: allProjects.slice(0, FREE_PROJECT_LIMIT),
           hasMore: false,
@@ -80,7 +81,7 @@ const list = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: { projects: data, hasMore, nextCursor },
       timestamp: Date.now(),
     });
@@ -97,7 +98,7 @@ const remove = async (req, res, next) => {
     if (!project) {
       return res.status(404).json({
         code: ERROR_CODES.NOT_FOUND,
-        msg: 'Project not found',
+        msg: t('errors.project.notFound', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -108,7 +109,7 @@ const remove = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'Project deleted',
+      msg: t('project.deleted', req.lang),
       data: null,
       timestamp: Date.now(),
     });

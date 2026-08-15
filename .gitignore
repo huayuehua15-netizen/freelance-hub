@@ -24,6 +24,11 @@ temp/
 mobile/analyze_result.txt
 mobile/ver.txt
 
+# ===== AI agent handover/session docs (not for repo) =====
+HANDOVER.md
+SESSION_SUMMARY.md
+开发进度与交接.md
+
 # ===== Local git helper scripts (agent-written, not for repo) =====
 /git_*.bat
 /git_check*

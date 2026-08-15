@@ -3,6 +3,7 @@ const TimeLog = require('../models/TimeLog');
 const ExpenseLog = require('../models/ExpenseLog');
 const ClientProject = require('../models/ClientProject');
 const { ERROR_CODES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const getMonthly = async (req, res, next) => {
   try {
@@ -13,7 +14,7 @@ const getMonthly = async (req, res, next) => {
         !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
       return res.status(400).json({
         code: ERROR_CODES.BAD_REQUEST,
-        msg: 'year must be between 2000 and 2100 and month must be between 1 and 12',
+        msg: t('errors.report.yearMonthInvalid', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -23,7 +24,7 @@ const getMonthly = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: report,
       timestamp: Date.now(),
     });
@@ -37,14 +38,14 @@ const getAnnual = async (req, res, next) => {
     const { year } = req.query;
     const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
     if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
-      return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: 'year must be between 2000 and 2100', data: null, timestamp: Date.now() });
+      return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearInvalid', req.lang), data: null, timestamp: Date.now() });
     }
 
     const report = await ReportService.getAnnualReport(req.userId, yearNum);
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: report,
       timestamp: Date.now(),
     });
@@ -94,7 +95,7 @@ const exportPdf = async (req, res, next) => {
       const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
       const monthNum = month == null ? new Date().getMonth() + 1 : Number.parseInt(month, 10);
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100 || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
-        return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: 'A valid year and month are required', data: null, timestamp: Date.now() });
+        return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearMonthRequired', req.lang), data: null, timestamp: Date.now() });
       }
       const report = await ReportService.getMonthlyReport(req.userId, yearNum, monthNum);
 
@@ -107,7 +108,7 @@ const exportPdf = async (req, res, next) => {
     if (type === 'annual') {
       const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
-        return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: 'A valid year is required', data: null, timestamp: Date.now() });
+        return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearRequired', req.lang), data: null, timestamp: Date.now() });
       }
       const report = await ReportService.getAnnualReport(req.userId, yearNum);
 
@@ -119,7 +120,7 @@ const exportPdf = async (req, res, next) => {
 
     return res.status(400).json({
       code: ERROR_CODES.BAD_REQUEST,
-      msg: 'Invalid export type. Use "monthly" or "annual".',
+      msg: t('errors.report.exportTypeInvalid', req.lang),
       data: null,
       timestamp: Date.now(),
     });
@@ -143,7 +144,7 @@ const exportCsv = async (req, res, next) => {
     const { year } = req.query;
     const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
     if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
-      return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: 'A valid year is required', data: null, timestamp: Date.now() });
+      return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearRequired', req.lang), data: null, timestamp: Date.now() });
     }
 
     const startDate = new Date(Date.UTC(yearNum, 0, 1)).getTime();

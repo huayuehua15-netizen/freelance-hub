@@ -1,6 +1,7 @@
 const TimeLog = require('../models/TimeLog');
 const SyncService = require('../services/syncService');
 const { ERROR_CODES, PREMIUM_TYPES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const batchUpsert = async (req, res, next) => {
   try {
@@ -8,7 +9,7 @@ const batchUpsert = async (req, res, next) => {
     if (!Array.isArray(timeLogs)) {
       return res.status(400).json({
         code: ERROR_CODES.BAD_REQUEST,
-        msg: 'timeLogs must be an array',
+        msg: t('errors.sync.timelogsArrayRequired', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -21,7 +22,7 @@ const batchUpsert = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: result,
       timestamp: Date.now(),
     });
@@ -40,7 +41,7 @@ const pull = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: result,
       timestamp: Date.now(),
     });
@@ -56,29 +57,51 @@ const list = async (req, res, next) => {
 
     if (projectId) query.projectId = projectId;
 
+    // 组装 startTime 范围:Annual 尊重用户传入,Free 强制限制在当月内
+    // 修复 M3:此前 Free 直接覆盖用户传入的 startDate/endDate,且无上界(可看到未来记录)
     const startTimeRange = {};
     if (startDate) startTimeRange.$gte = parseInt(startDate);
     if (endDate) startTimeRange.$lt = parseInt(endDate);
-    if (Object.keys(startTimeRange).length) query.startTime = startTimeRange;
 
     if (req.user.premiumType === PREMIUM_TYPES.FREE) {
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-      query.startTime = { $gte: monthStart.getTime() };
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      // 取用户 startDate 与月初的较大者, endDate 与下月1号的较小者
+      const userStart = startDate ? parseInt(startDate) : 0;
+      const userEnd = endDate ? parseInt(endDate) : Infinity;
+      startTimeRange.$gte = Math.max(monthStart.getTime(), userStart);
+      startTimeRange.$lt = Math.min(monthEnd.getTime(), userEnd);
     }
 
-    const limitNum = Math.min(parseInt(limit) || 50, 200);
-    if (cursor) query.serverUpdateTime = { $lt: new Date(parseInt(cursor)) };
+    if (Object.keys(startTimeRange).length) query.startTime = startTimeRange;
 
-    const logs = await TimeLog.find(query).sort({ serverUpdateTime: -1 }).limit(limitNum + 1);
+    // 修复 M4:复合游标 (serverUpdateTime, _id),避免同毫秒多条翻页跳过/重复
+    const limitNum = Math.min(parseInt(limit) || 50, 200);
+    if (cursor) {
+      const [tsStr, idStr] = cursor.split('_');
+      const ts = parseInt(tsStr);
+      if (idStr) {
+        query.$or = [
+          { serverUpdateTime: { $lt: new Date(ts) } },
+          { serverUpdateTime: new Date(ts), _id: { $lt: idStr } },
+        ];
+      } else {
+        query.serverUpdateTime = { $lt: new Date(ts) };
+      }
+    }
+
+    const logs = await TimeLog.find(query)
+      .sort({ serverUpdateTime: -1, _id: -1 })
+      .limit(limitNum + 1);
     const hasMore = logs.length > limitNum;
     const data = hasMore ? logs.slice(0, limitNum) : logs;
-    const nextCursor = hasMore ? data[data.length - 1].serverUpdateTime.getTime() : null;
+    const last = hasMore ? data[data.length - 1] : null;
+    const nextCursor = last ? `${last.serverUpdateTime.getTime()}_${last._id}` : null;
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: { timeLogs: data, hasMore, nextCursor },
       timestamp: Date.now(),
     });
@@ -95,7 +118,7 @@ const remove = async (req, res, next) => {
     if (!log) {
       return res.status(404).json({
         code: ERROR_CODES.NOT_FOUND,
-        msg: 'Time log not found',
+        msg: t('errors.timelog.notFound', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -106,7 +129,7 @@ const remove = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'Time log deleted',
+      msg: t('timelog.deleted', req.lang),
       data: null,
       timestamp: Date.now(),
     });

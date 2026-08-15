@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,14 +44,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Icon(Icons.timer_outlined, size: 64, color: AppTheme.primary),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Freelance Hub',
+                  Text(
+                    AppLocalizations.t('appTitle'),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Track time, manage expenses, simplify taxes.',
+                  Text(
+                    AppLocalizations.t('loginTagline'),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppTheme.textSecondary),
                   ),
@@ -58,20 +59,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (!_isLogin)
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Name'),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your name' : null,
+                      decoration: InputDecoration(labelText: AppLocalizations.t('name')),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? AppLocalizations.t('errors.nameRequired') : null,
                     ),
                   if (!_isLogin) const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    decoration: InputDecoration(labelText: AppLocalizations.t('email')),
                     keyboardType: TextInputType.emailAddress,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (v) {
                       final email = v?.trim() ?? '';
-                      if (email.isEmpty) return 'Email is required';
+                      if (email.isEmpty) return AppLocalizations.t('errors.emailRequired');
                       if (!RegExp(r'^[\w.+-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
-                        return 'Enter a valid email address';
+                        return AppLocalizations.t('errors.invalidEmail');
                       }
                       return null;
                     },
@@ -79,15 +80,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: InputDecoration(labelText: AppLocalizations.t('password')),
                     obscureText: true,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (v) {
                       final pwd = v ?? '';
-                      if (pwd.isEmpty) return 'Password is required';
-                      if (pwd.length < 8) return 'Password must be at least 8 characters';
-                      if (!RegExp(r'[A-Za-z]').hasMatch(pwd)) return 'Password must contain at least one letter';
-                      if (!RegExp(r'[0-9]').hasMatch(pwd)) return 'Password must contain at least one number';
+                      if (pwd.isEmpty) return AppLocalizations.t('errors.passwordRequired');
+                      if (pwd.length < 8) return AppLocalizations.t('errors.passwordTooShort');
+                      if (!RegExp(r'[A-Za-z]').hasMatch(pwd)) return AppLocalizations.t('errors.passwordRequiresLetter');
+                      if (!RegExp(r'[0-9]').hasMatch(pwd)) return AppLocalizations.t('errors.passwordRequiresNumber');
                       return null;
                     },
                   ),
@@ -103,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _loading ? null : _submit,
                       child: _loading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(_isLogin ? 'Sign In' : 'Create Account', style: const TextStyle(fontSize: 16)),
+                          : Text(_isLogin ? AppLocalizations.t('login') : AppLocalizations.t('createAccount'), style: const TextStyle(fontSize: 16)),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -112,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _isLogin = !_isLogin;
                       _error = null;
                     }),
-                    child: Text(_isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'),
+                    child: Text(_isLogin ? "${AppLocalizations.t('noAccount')} ${AppLocalizations.t('register')}" : "${AppLocalizations.t('haveAccount')} ${AppLocalizations.t('login')}"),
                   ),
                   const SizedBox(height: 24),
                   TextButton(
@@ -120,17 +121,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       // 跳过登录，使用本地模式
                       Navigator.pushReplacementNamed(context, '/dashboard');
                     },
-                    child: const Text('Continue without account (local only)'),
+                    child: Text(AppLocalizations.t('continueWithoutAccount')),
                   ),
                   const SizedBox(height: 16),
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.cloud_outlined, size: 16, color: AppTheme.textSecondary),
-                      SizedBox(width: 6),
+                      const Icon(Icons.cloud_outlined, size: 16, color: AppTheme.textSecondary),
+                      const SizedBox(width: 6),
                       Text(
-                        'Sign in to enable cloud sync (Annual plan)',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        AppLocalizations.t('cloudSyncHint'),
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
@@ -160,7 +161,13 @@ class _LoginScreenState extends State<LoginScreen> {
       await _syncPremium(context);
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
-      setState(() => _error = e.toString());
+      String msg;
+      try {
+        msg = (e as dynamic).message as String;
+      } catch (_) {
+        msg = e.toString();
+      }
+      setState(() => _error = msg);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

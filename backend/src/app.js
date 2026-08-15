@@ -4,6 +4,7 @@ const config = require('./config/env');
 const connectDB = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
+const langMiddleware = require('./middleware/lang');
 const logger = require('./utils/logger');
 
 const authRoutes = require('./routes/auth');
@@ -34,6 +35,10 @@ app.use(express.json({
   },
 }));
 app.use(express.urlencoded({ extended: true }));
+
+// 解析 Accept-Language 头，挂到 req.lang（'en' | 'zh'）；
+// controller 通过 t(key, req.lang) 返回本地化错误消息。
+app.use(langMiddleware);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now(), env: config.nodeEnv });

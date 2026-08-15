@@ -1,4 +1,5 @@
 const { ERROR_CODES, PREMIUM_TYPES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const getEntitlement = async (req, res) => {
   const user = req.user;
@@ -8,7 +9,7 @@ const getEntitlement = async (req, res) => {
 
   return res.status(200).json({
     code: ERROR_CODES.SUCCESS,
-    msg: 'success',
+    msg: t('common.success', req.lang),
     data: {
       premiumType: user.premiumType,
       expireTime: user.expireTime,

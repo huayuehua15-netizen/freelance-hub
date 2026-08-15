@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const config = require('../config/env');
 const { ERROR_CODES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const validPassword = (password) =>
@@ -12,6 +13,7 @@ const validPassword = (password) =>
   /[A-Za-z]/.test(password) &&
   /\d/.test(password);
 
+// 注意：本 helper 不接 req，故调用方需先 t(key, req.lang) 再传入。
 const invalidCredentialsResponse = (res, message) => res.status(400).json({
   code: ERROR_CODES.BAD_REQUEST,
   msg: message,
@@ -24,13 +26,13 @@ const register = async (req, res, next) => {
     const { email, password, userName, currency, timezone } = req.body;
 
     if (typeof email !== 'string' || !emailPattern.test(email.trim())) {
-      return invalidCredentialsResponse(res, 'A valid email address is required');
+      return invalidCredentialsResponse(res, t('errors.validation.emailRequired', req.lang));
     }
     if (!validPassword(password)) {
-      return invalidCredentialsResponse(res, 'Password must be at least 8 characters and include a letter and a number');
+      return invalidCredentialsResponse(res, t('errors.validation.passwordInvalid', req.lang));
     }
     if (userName != null && (typeof userName !== 'string' || userName.trim().length > 100)) {
-      return invalidCredentialsResponse(res, 'User name must be 100 characters or fewer');
+      return invalidCredentialsResponse(res, t('errors.validation.userNameTooLong', req.lang));
     }
 
     const existing = await User.findOne({ userEmail: email.toLowerCase() });
@@ -39,7 +41,7 @@ const register = async (req, res, next) => {
       if (!existing.isDeleted) {
         return res.status(409).json({
           code: ERROR_CODES.CONFLICT,
-          msg: 'Email already registered',
+          msg: t('errors.auth.emailExists', req.lang),
           data: null,
           timestamp: Date.now(),
         });
@@ -61,7 +63,7 @@ const register = async (req, res, next) => {
 
       return res.status(200).json({
         code: ERROR_CODES.SUCCESS,
-        msg: 'success',
+        msg: t('common.success', req.lang),
         data: {
           userId: existing.userId,
           email: existing.userEmail,
@@ -101,7 +103,7 @@ const register = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: {
         userId: user.userId,
         email: user.userEmail,
@@ -125,14 +127,14 @@ const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (typeof email !== 'string' || !emailPattern.test(email.trim()) || typeof password !== 'string' || !password) {
-      return invalidCredentialsResponse(res, 'Email and password are required');
+      return invalidCredentialsResponse(res, t('errors.validation.emailPasswordRequired', req.lang));
     }
 
     const user = await User.findOne({ userEmail: email.trim().toLowerCase(), isDeleted: false });
     if (!user) {
       return res.status(401).json({
         code: ERROR_CODES.UNAUTHORIZED,
-        msg: 'Invalid email or password',
+        msg: t('errors.auth.invalidCredentials', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -142,7 +144,7 @@ const login = async (req, res, next) => {
     if (!isValid) {
       return res.status(401).json({
         code: ERROR_CODES.UNAUTHORIZED,
-        msg: 'Invalid email or password',
+        msg: t('errors.auth.invalidCredentials', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -156,7 +158,7 @@ const login = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: {
         userId: user.userId,
         email: user.userEmail,
@@ -182,33 +184,37 @@ const refresh = async (req, res, next) => {
     if (!refreshToken) {
       return res.status(401).json({
         code: ERROR_CODES.UNAUTHORIZED,
-        msg: 'Refresh token required',
+        msg: t('errors.auth.refreshTokenRequired', req.lang),
         data: null,
         timestamp: Date.now(),
       });
     }
 
     const decoded = verifyRefreshToken(refreshToken);
-    const user = await User.findOne({ userId: decoded.userId, isDeleted: false });
 
-    if (!user || user.refreshToken !== refreshToken) {
+    // 原子轮换:条件带 refreshToken:旧值,只有持有旧 token 的请求能成功
+    // 并发场景下第二个请求 matchedCount=0 → 401,客户端走重新登录,杜绝互相覆盖产生孤儿 token
+    const newAccessToken = generateAccessToken(decoded.userId);
+    const newRefreshToken = generateRefreshToken(decoded.userId);
+
+    const updated = await User.findOneAndUpdate(
+      { userId: decoded.userId, isDeleted: false, refreshToken },
+      { $set: { refreshToken: newRefreshToken } },
+      { new: true }
+    );
+
+    if (!updated) {
       return res.status(401).json({
         code: ERROR_CODES.REFRESH_TOKEN_EXPIRED,
-        msg: 'Refresh token expired or invalid, please login again',
+        msg: t('errors.auth.refreshTokenInvalid', req.lang),
         data: null,
         timestamp: Date.now(),
       });
     }
 
-    const newAccessToken = generateAccessToken(user.userId);
-    const newRefreshToken = generateRefreshToken(user.userId);
-
-    user.refreshToken = newRefreshToken;
-    await user.save();
-
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
@@ -219,7 +225,7 @@ const refresh = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       code: ERROR_CODES.REFRESH_TOKEN_EXPIRED,
-      msg: 'Refresh token expired, please login again',
+      msg: t('errors.auth.refreshTokenExpired', req.lang),
       data: null,
       timestamp: Date.now(),
     });
@@ -230,7 +236,7 @@ const getMe = async (req, res) => {
   const user = req.user;
   return res.status(200).json({
     code: ERROR_CODES.SUCCESS,
-    msg: 'success',
+    msg: t('common.success', req.lang),
     data: {
       userId: user.userId,
       email: user.userEmail,
@@ -251,7 +257,7 @@ const logout = async (req, res) => {
   await req.user.save();
   return res.status(200).json({
     code: ERROR_CODES.SUCCESS,
-    msg: 'Logged out successfully',
+    msg: t('auth.loggedOut', req.lang),
     data: null,
     timestamp: Date.now(),
   });
@@ -264,7 +270,7 @@ const deleteAccount = async (req, res) => {
   await req.user.save();
   return res.status(200).json({
     code: ERROR_CODES.SUCCESS,
-    msg: 'Account scheduled for deletion. Data will be permanently removed after 30 days.',
+    msg: t('auth.accountDeletionScheduled', req.lang),
     data: null,
     timestamp: Date.now(),
   });

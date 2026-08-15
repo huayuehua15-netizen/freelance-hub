@@ -3,41 +3,42 @@ const User = require('../models/User');
 const config = require('../config/env');
 const logger = require('../utils/logger');
 const { PREMIUM_TYPES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const handleRevenuecatWebhook = async (req, res) => {
   try {
     const signature = req.headers['x-revenuecat-signature'];
     const event = req.body;
 
-    if (config.isProd) {
-      if (typeof signature !== 'string' || !req.rawBody) {
-        logger.warn('Missing RevenueCat webhook signature');
-        return res.status(403).json({ error: 'Invalid signature' });
-      }
-      // RevenueCat v2 signs the raw body with HMAC-SHA256 (base64).  The header
-      // may carry multiple `vX=<sig>,...` entries so all of them must be
-      // checked before rejecting the request.
-      const expected = crypto
-        .createHmac('sha256', config.revenuecat.webhookSecret)
-        .update(req.rawBody)
-        .digest('base64');
-      const expectedBuf = Buffer.from(expected, 'base64');
+    // 签名校验在任何环境都执行(配合 env.js 的 prod fail-fast,杜绝 dev 也被伪造订阅事件)
+    // dev 默认 secret 为 'dev_webhook_secret',本地回放用同值签名即可
+    if (typeof signature !== 'string' || !req.rawBody) {
+      logger.warn('Missing RevenueCat webhook signature');
+      return res.status(403).json({ error: t('errors.webhook.invalidSignature', req.lang) });
+    }
+    // RevenueCat v2 signs the raw body with HMAC-SHA256 (base64).  The header
+    // may carry multiple `vX=<sig>,...` entries so all of them must be
+    // checked before rejecting the request.
+    const expected = crypto
+      .createHmac('sha256', config.revenuecat.webhookSecret)
+      .update(req.rawBody)
+      .digest('base64');
+    const expectedBuf = Buffer.from(expected, 'base64');
 
-      const presented = signature
-        .split(',')
-        .map((entry) => entry.trim())
-        .map((entry) => entry.replace(/^v\d+=/i, ''))
-        .filter(Boolean);
+    const presented = signature
+      .split(',')
+      .map((entry) => entry.trim())
+      .map((entry) => entry.replace(/^v\d+=/i, ''))
+      .filter(Boolean);
 
-      const valid = presented.some((entry) => {
-        const buf = Buffer.from(entry, 'base64');
-        return buf.length === expectedBuf.length && crypto.timingSafeEqual(buf, expectedBuf);
-      });
+    const valid = presented.some((entry) => {
+      const buf = Buffer.from(entry, 'base64');
+      return buf.length === expectedBuf.length && crypto.timingSafeEqual(buf, expectedBuf);
+    });
 
-      if (!valid) {
-        logger.warn('Invalid RevenueCat webhook signature');
-        return res.status(403).json({ error: 'Invalid signature' });
-      }
+    if (!valid) {
+      logger.warn('Invalid RevenueCat webhook signature');
+      return res.status(403).json({ error: t('errors.webhook.invalidSignature', req.lang) });
     }
 
     // RevenueCat v2 wraps the data in `event`; accepting the flat shape keeps
@@ -104,7 +105,7 @@ const handleRevenuecatWebhook = async (req, res) => {
     return res.status(200).json({ received: true });
   } catch (error) {
     logger.error(`Webhook error: ${error.message}`);
-    return res.status(500).json({ error: 'Internal error' });
+    return res.status(500).json({ error: t('errors.webhook.internalError', req.lang) });
   }
 };
 

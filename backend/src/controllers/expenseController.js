@@ -1,6 +1,7 @@
 const ExpenseLog = require('../models/ExpenseLog');
 const SyncService = require('../services/syncService');
 const { ERROR_CODES, PREMIUM_TYPES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const batchUpsert = async (req, res, next) => {
   try {
@@ -8,7 +9,7 @@ const batchUpsert = async (req, res, next) => {
     if (!Array.isArray(expenses)) {
       return res.status(400).json({
         code: ERROR_CODES.BAD_REQUEST,
-        msg: 'expenses must be an array',
+        msg: t('errors.sync.expensesArrayRequired', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -21,7 +22,7 @@ const batchUpsert = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: result,
       timestamp: Date.now(),
     });
@@ -40,7 +41,7 @@ const pull = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: result,
       timestamp: Date.now(),
     });
@@ -58,29 +59,50 @@ const list = async (req, res, next) => {
     if (category) query.category = category;
     if (isTaxDeductible !== undefined) query.isTaxDeductible = isTaxDeductible === 'true';
 
+    // 组装 expenseDate 范围:Annual 尊重用户传入,Free 强制限制在当月内
+    // 修复 M3:此前 Free 直接覆盖用户传入的 startDate/endDate,且无上界
     const expenseDateRange = {};
     if (startDate) expenseDateRange.$gte = parseInt(startDate);
     if (endDate) expenseDateRange.$lt = parseInt(endDate);
-    if (Object.keys(expenseDateRange).length) query.expenseDate = expenseDateRange;
 
     if (req.user.premiumType === PREMIUM_TYPES.FREE) {
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-      query.expenseDate = { $gte: monthStart.getTime() };
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const userStart = startDate ? parseInt(startDate) : 0;
+      const userEnd = endDate ? parseInt(endDate) : Infinity;
+      expenseDateRange.$gte = Math.max(monthStart.getTime(), userStart);
+      expenseDateRange.$lt = Math.min(monthEnd.getTime(), userEnd);
     }
 
-    const limitNum = Math.min(parseInt(limit) || 50, 200);
-    if (cursor) query.serverUpdateTime = { $lt: new Date(parseInt(cursor)) };
+    if (Object.keys(expenseDateRange).length) query.expenseDate = expenseDateRange;
 
-    const expenses = await ExpenseLog.find(query).sort({ serverUpdateTime: -1 }).limit(limitNum + 1);
+    // 修复 M4:复合游标 (serverUpdateTime, _id),避免同毫秒多条翻页跳过/重复
+    const limitNum = Math.min(parseInt(limit) || 50, 200);
+    if (cursor) {
+      const [tsStr, idStr] = cursor.split('_');
+      const ts = parseInt(tsStr);
+      if (idStr) {
+        query.$or = [
+          { serverUpdateTime: { $lt: new Date(ts) } },
+          { serverUpdateTime: new Date(ts), _id: { $lt: idStr } },
+        ];
+      } else {
+        query.serverUpdateTime = { $lt: new Date(ts) };
+      }
+    }
+
+    const expenses = await ExpenseLog.find(query)
+      .sort({ serverUpdateTime: -1, _id: -1 })
+      .limit(limitNum + 1);
     const hasMore = expenses.length > limitNum;
     const data = hasMore ? expenses.slice(0, limitNum) : expenses;
-    const nextCursor = hasMore ? data[data.length - 1].serverUpdateTime.getTime() : null;
+    const last = hasMore ? data[data.length - 1] : null;
+    const nextCursor = last ? `${last.serverUpdateTime.getTime()}_${last._id}` : null;
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'success',
+      msg: t('common.success', req.lang),
       data: { expenses: data, hasMore, nextCursor },
       timestamp: Date.now(),
     });
@@ -97,7 +119,7 @@ const remove = async (req, res, next) => {
     if (!expense) {
       return res.status(404).json({
         code: ERROR_CODES.NOT_FOUND,
-        msg: 'Expense not found',
+        msg: t('errors.expense.notFound', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -108,7 +130,7 @@ const remove = async (req, res, next) => {
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
-      msg: 'Expense deleted',
+      msg: t('expense.deleted', req.lang),
       data: null,
       timestamp: Date.now(),
     });

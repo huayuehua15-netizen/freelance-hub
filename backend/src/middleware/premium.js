@@ -1,4 +1,5 @@
 const { ERROR_CODES, PREMIUM_TYPES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 
 const PREMIUM_LEVELS = {
   [PREMIUM_TYPES.FREE]: 0,
@@ -12,7 +13,7 @@ const requirePremium = (minLevel) => {
     if (!user) {
       return res.status(401).json({
         code: ERROR_CODES.UNAUTHORIZED,
-        msg: 'Authentication required',
+        msg: t('errors.auth.authenticationRequired', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -23,11 +24,11 @@ const requirePremium = (minLevel) => {
 
     if (userLevel < requiredLevel) {
       let errorCode = ERROR_CODES.NEED_MONTHLY;
-      let msg = 'This feature requires a Monthly or Annual subscription';
+      let msg = t('errors.premium.requiresMonthly', req.lang);
 
       if (minLevel === PREMIUM_TYPES.ANNUAL) {
         errorCode = ERROR_CODES.NEED_ANNUAL;
-        msg = 'This feature requires an Annual Contractor subscription';
+        msg = t('errors.premium.requiresAnnual', req.lang);
       }
 
       return res.status(403).json({

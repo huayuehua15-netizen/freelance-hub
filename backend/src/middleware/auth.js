@@ -1,5 +1,6 @@
 const { verifyAccessToken } = require('../utils/jwt');
 const { ERROR_CODES } = require('../utils/constants');
+const { t } = require('../utils/i18n');
 const User = require('../models/User');
 
 const authMiddleware = async (req, res, next) => {
@@ -8,7 +9,7 @@ const authMiddleware = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         code: ERROR_CODES.UNAUTHORIZED,
-        msg: 'Authorization token required',
+        msg: t('errors.auth.tokenRequired', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -21,7 +22,7 @@ const authMiddleware = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         code: ERROR_CODES.UNAUTHORIZED,
-        msg: 'User not found',
+        msg: t('errors.auth.userNotFound', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -45,7 +46,7 @@ const authMiddleware = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({
       code: ERROR_CODES.UNAUTHORIZED,
-      msg: 'Invalid or expired token',
+      msg: t('errors.auth.invalidToken', req.lang),
       data: null,
       timestamp: Date.now(),
     });
