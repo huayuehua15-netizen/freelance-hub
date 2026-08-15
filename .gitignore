@@ -24,6 +24,10 @@ temp/
 mobile/analyze_result.txt
 mobile/ver.txt
 
+# ===== Local git helper scripts (agent-written, not for repo) =====
+/git_*.bat
+/git_check*
+
 # ===== Environment =====
 .env
 .env.*
