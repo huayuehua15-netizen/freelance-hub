@@ -1,0 +1,30 @@
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Editors =====
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# ===== Logs & temp =====
+*.log
+logs/
+tmp/
+temp/
+
+# ===== AI tool memory / dev leftovers =====
+**/.workbuddy/
+mobile/analyze_result.txt
+mobile/ver.txt
+
+# ===== Environment =====
+.env
+.env.*
+!.env.example

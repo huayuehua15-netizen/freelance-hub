@@ -1,0 +1,18 @@
+# ===== Dependencies =====
+node_modules/
+
+# ===== Environment (secrets: MongoDB URI / JWT keys) =====
+.env
+.env.*
+!.env.example
+
+# ===== Logs =====
+*.log
+server.log
+server.err
+
+# ===== Uploads & artifacts =====
+uploads/
+tmp/
+coverage/
+dist/
