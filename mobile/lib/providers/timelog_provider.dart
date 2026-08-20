@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/time_log.dart';
+import '../services/background_task_service.dart';
 import '../services/hive_service.dart';
 import '../services/notification_service.dart';
 
@@ -63,6 +64,13 @@ class TimelogProvider extends ChangeNotifier {
       await _persistTimerState();
       // 显示常驻通知；workmanager 前台服务保活仍为可选增强项
       await NotificationService.showTimerRunning(body: _currentNote);
+      // 注册晚间提醒任务：系统在 19:00–22:30 窗口内调度，提醒用户停止并保存工时。
+      // 失败不阻断计时启动——这只是辅助提醒，主流程已持久化到 Hive。
+      try {
+        await BackgroundTaskService.registerTimerReminder();
+      } catch (e) {
+        debugPrint('registerTimerReminder failed: $e');
+      }
       notifyListeners();
     }
   }
@@ -135,6 +143,13 @@ class TimelogProvider extends ChangeNotifier {
     _currentTag = '';
     _currentNote = '';
     await NotificationService.cancelTimer();
+    // 取消晚间提醒任务：计时已停止/取消，无需再提醒用户。
+    // 失败不阻断主流程——任务在下次 startTimer 时会重新注册。
+    try {
+      await BackgroundTaskService.cancelTimerReminder();
+    } catch (e) {
+      debugPrint('cancelTimerReminder failed: $e');
+    }
   }
 
   Future<void> loadTimeLogs() async {
@@ -195,14 +210,32 @@ class TimelogProvider extends ChangeNotifier {
         _timerState = TimerState.idle;
         _sessionStartTime = null;
         _startTime = null;
-      } else if (_timerState == TimerState.running) {
-        await NotificationService.showTimerRunning(body: _currentNote);
+      } else if (_timerState == TimerState.running && _startTime != null) {
+        // 死区时间裁剪：App 被系统杀掉后再重开，_startTime 是杀进程前的绝对时间戳，
+        // 若直接恢复会把"锁屏/被杀期间"的墙钟时间全部计入工时 → 向客户多计费。
+        // 阈值 60 分钟：连续计时场景下用户短暂切后台不会触发；
+        // 超过阈值大概率是被系统冻结后重开，此时保留杀进程前的累积时长，
+        // 把 _startTime 置空并切换到 paused，强制用户手动 Resume 确认。
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final deadZoneMs = now - _startTime!;
+        if (deadZoneMs > _recoverDeadZoneThresholdMs) {
+          _accumulatedDuration += 0; // accumulatedDuration 已是杀进程前真实累积，无需再加
+          _startTime = null;
+          _timerState = TimerState.paused;
+          await NotificationService.showTimerPaused();
+        } else {
+          await NotificationService.showTimerRunning(body: _currentNote);
+        }
       } else if (_timerState == TimerState.paused) {
         await NotificationService.showTimerPaused();
       }
       notifyListeners();
     }
   }
+
+  // 恢复死区阈值：超过此间隔视为被系统杀进程而非真实连续工作，裁剪掉这段时间。
+  // 60 分钟兼顾"午休切后台吃饭"等正常场景，又能拦住"隔夜被杀后重开"这种典型错误计费。
+  static const int _recoverDeadZoneThresholdMs = 60 * 60 * 1000;
 
   Future<void> _persistTimerState() async {
     final box = HiveService.configBoxInstance;

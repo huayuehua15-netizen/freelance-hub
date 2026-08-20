@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ===========================================================================
+     Adaptive Icon 前景：时钟 + 账单线条组合
+     - 外圈：时钟圆环（工时追踪核心功能）
+     - 内部：三条横线（项目/开支/报表的简洁表达）
+     - 顶部小指针：暗示"时间在流动"
+     设计规范：108x108dp，安全区域为中心 66x66dp（直径），所有内容必须在安全区内
+     =========================================================================== -->
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 时钟外圈：直径 56dp，居中于 108dp 画布（中心 54,54，半径 28） -->
+    <!-- stroke 宽度 4dp，白色，半透明避免过曝 -->
+    <path
+        android:pathData="M54,26 A28,28 0 1,1 53.99,26"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- 时钟指针（12点位置短指针）：从中心向上偏右上 -->
+    <path
+        android:pathData="M54,54 L54,38"
+        android:strokeWidth="3.5"
+        android:strokeColor="#FFF59E0B"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- 时钟指针（3点位置长指针）：从中心向右 -->
+    <path
+        android:pathData="M54,54 L68,54"
+        android:strokeWidth="3.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- 中心点：金色小圆，强调品牌识别 -->
+    <path
+        android:pathData="M54,54 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"
+        android:fillColor="#FFF59E0B" />
+
+    <!-- 底部账单/文档线条：三条横线，暗示项目清单与开支记录 -->
+    <!-- 左对齐于时钟圈内左下，长度递增营造"清单"感 -->
+    <path
+        android:pathData="M42,68 L66,68"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M42,74 L62,74"
+        android:strokeWidth="2.5"
+        android:strokeColor="#CCFFFFFF"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M42,80 L58,80"
+        android:strokeWidth="2.5"
+        android:strokeColor="#99FFFFFF"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+</vector>

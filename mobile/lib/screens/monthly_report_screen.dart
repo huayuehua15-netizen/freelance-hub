@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:typed_data';
+import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -26,10 +27,15 @@ class MonthlyReportScreen extends StatefulWidget {
 class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
-  static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  // 月份名按当前 locale 渲染：之前硬编码英文数组，中文用户看到 "January 2026" 与界面语言不一致。
+  String _formatMonthYear(DateTime date) {
+    final locale = AppLocalizations.current.languageCode;
+    // intl 的本地化数据需通过 flutter_localications 加载；这里传入 locale 名称，
+    // 若该 locale 未初始化则 DateFormat 会回退到默认英文，保证不抛错。
+    final monthName = DateFormat.MMMM(locale).format(date);
+    return '$monthName ${date.year}';
+  }
+
   static const _palette = [
     AppTheme.primary,
     AppTheme.success,
@@ -75,7 +81,8 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final monthExpenses = expense.expenses.where((e) => e.expenseDate >= monthStart && e.expenseDate < nextMonthStart).toList();
 
     final totalHours = monthLogs.fold<double>(0, (s, t) => s + t.duration);
-    final totalIncome = monthLogs.fold<double>(0, (s, t) => s + t.billableAmount);
+    // 收入只累计可计费工时（历史数据可能存在非计费但金额未清零的记录）
+    final totalIncome = monthLogs.fold<double>(0, (s, t) => s + (t.isBillable ? t.billableAmount : 0));
     final totalExpenses = monthExpenses.fold<double>(0, (s, e) => s + e.amount);
     final netIncome = totalIncome - totalExpenses;
 
@@ -105,6 +112,9 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
   }
 
   Widget _buildMonthSelector() {
+    // 未来月份无数据可看：右箭头到达当月后禁用（年报年份选择器同策略）
+    final now = DateTime.now();
+    final isCurrentMonth = _selectedMonth.year == now.year && _selectedMonth.month == now.month;
     return Card(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -116,14 +126,16 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             }),
           ),
           Text(
-            '${_months[_selectedMonth.month - 1]} ${_selectedMonth.year}',
+            _formatMonthYear(_selectedMonth),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
-            onPressed: () => setState(() {
-              _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
-            }),
+            onPressed: isCurrentMonth
+                ? null
+                : () => setState(() {
+                      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+                    }),
           ),
         ],
       ),
@@ -174,7 +186,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     for (final t in logs) {
       final d = DateTime.fromMillisecondsSinceEpoch(t.startTime as int);
       if (d.year == _selectedMonth.year && d.month == _selectedMonth.month) {
-        perDay[d.day] += t.billableAmount as double;
+        perDay[d.day] += (t.isBillable as bool? ?? true) ? t.billableAmount as double : 0.0;
       }
     }
     final hasData = logs.isNotEmpty;
@@ -215,7 +227,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                           return touchedSpots.map((spot) {
                             return LineTooltipItem(
                               '${AppLocalizations.t1('dayTooltip', {'n': '${spot.x.toInt()}'})}\n${CurrencyFormat.money(spot.y)}',
-                              TextStyle(
+                              const TextStyle(
                                 color: AppTheme.success,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 12,
@@ -235,7 +247,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                         color: AppTheme.success,
                         barWidth: 2.5,
                         dotData: const FlDotData(show: false),
-                        belowBarData: BarAreaData(show: true, color: AppTheme.success.withOpacity(0.1)),
+                        belowBarData: BarAreaData(show: true, color: AppTheme.success.withValues(alpha: 0.1)),
                       ),
                     ],
                   ),
@@ -444,7 +456,7 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     ProjectProvider project,
   ) async {
     final totalHours = logs.fold<double>(0, (s, t) => s + t.duration);
-    final totalIncome = logs.fold<double>(0, (s, t) => s + t.billableAmount);
+    final totalIncome = logs.fold<double>(0, (s, t) => s + (t.isBillable ? t.billableAmount : 0));
     final totalExpenses = expenses.fold<double>(0, (s, e) => s + e.amount);
     final net = totalIncome - totalExpenses;
 
@@ -453,10 +465,10 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
       pageFormat: PdfPageFormat.a4,
       build: (ctx) => [
         pw.Text(AppLocalizations.t('monthlyPdfTitle'),
-            style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+            style: const pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 4),
-        pw.Text('${_months[_selectedMonth.month - 1]} ${_selectedMonth.year}',
-            style: pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
+        pw.Text(_formatMonthYear(_selectedMonth),
+            style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey700)),
         pw.SizedBox(height: 16),
         pw.TableHelper.fromTextArray(
           headers: [AppLocalizations.t('metric'), AppLocalizations.t('value')],
@@ -466,14 +478,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
             [AppLocalizations.t('totalExpenses'), CurrencyFormat.money(totalExpenses)],
             [AppLocalizations.t('netIncome'), CurrencyFormat.money(net)],
           ],
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-          cellStyle: pw.TextStyle(fontSize: 10),
+          headerStyle: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          cellStyle: const pw.TextStyle(fontSize: 10),
         ),
         pw.SizedBox(height: 20),
-        pw.Text(AppLocalizations.t('timeLogs'), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLocalizations.t('timeLogs'), style: const pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         if (logs.isEmpty)
-          pw.Text(AppLocalizations.t('noTimeLogsPdf'), style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+          pw.Text(AppLocalizations.t('noTimeLogsPdf'), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
         else
           pw.TableHelper.fromTextArray(
             headers: [AppLocalizations.t('date'), AppLocalizations.t('project'), AppLocalizations.t('hours'), AppLocalizations.t('amount'), AppLocalizations.t('tag')],
@@ -487,14 +499,14 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                   t.tag,
                 ],
             ],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            cellStyle: pw.TextStyle(fontSize: 10),
+            headerStyle: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            cellStyle: const pw.TextStyle(fontSize: 10),
           ),
         pw.SizedBox(height: 20),
-        pw.Text(AppLocalizations.t('expenses'), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.Text(AppLocalizations.t('expenses'), style: const pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
         pw.SizedBox(height: 8),
         if (expenses.isEmpty)
-          pw.Text(AppLocalizations.t('noExpensesPdf'), style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
+          pw.Text(AppLocalizations.t('noExpensesPdf'), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600))
         else
           pw.TableHelper.fromTextArray(
             headers: [AppLocalizations.t('date'), AppLocalizations.t('category'), AppLocalizations.t('merchant'), AppLocalizations.t('amount'), AppLocalizations.t('deductible')],
@@ -508,15 +520,15 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
                   e.isTaxDeductible ? AppLocalizations.t('yes') : AppLocalizations.t('no'),
                 ],
             ],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            cellStyle: pw.TextStyle(fontSize: 10),
+            headerStyle: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            cellStyle: const pw.TextStyle(fontSize: 10),
           ),
       ],
       footer: (ctx) => pw.Align(
         alignment: pw.Alignment.centerRight,
         child: pw.Text(
           AppLocalizations.t1('generatedBy', {'date': '${DateTime.now().toLocal()}'}),
-          style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+          style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
         ),
       ),
     ));

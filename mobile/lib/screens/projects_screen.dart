@@ -252,7 +252,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               }
               _exitSelectionMode();
             },
-            child: Text(AppLocalizations.t('delete'), style: TextStyle(color: AppTheme.danger)),
+            child: Text(AppLocalizations.t('delete'), style: const TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -327,7 +327,7 @@ class _CreateProjectSheetState extends State<_CreateProjectSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(AppLocalizations.t('newProject'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.t('newProject'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextFormField(
               controller: _clientNameController,

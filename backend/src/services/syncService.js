@@ -7,6 +7,14 @@ class SyncService {
     const results = [];
     const conflicts = [];
 
+    // 工时/开支同步时预加载该用户全部 projectId（含已软删：删项目后工时仍保留），
+    // 拒绝引用不属于本用户的项目，防止伪造数据归属破坏报表一致性
+    let validProjectIds = null;
+    if (idField === 'timeLogId' || idField === 'expenseId') {
+      const userProjects = await ClientProject.find({ userId }, { projectId: 1, _id: 0 });
+      validProjectIds = new Set(userProjects.map((p) => p.projectId));
+    }
+
     for (const record of records) {
       try {
         if (!record || typeof record !== 'object' || !record[idField]) {
@@ -24,6 +32,11 @@ class SyncService {
           __v,
           ...payload
         } = record;
+
+        // projectId 归属校验：开支的 projectId 可为空（跳过），非空则必须属于本用户
+        if (validProjectIds && payload.projectId && !validProjectIds.has(payload.projectId)) {
+          throw new Error(`projectId ${payload.projectId} does not belong to this user`);
+        }
 
         if (existing) {
           const clientTs = clientUpdatedAt || Date.now();
@@ -96,6 +109,8 @@ class SyncService {
   }
 
   static async pullSince(userId, model, since, limit = 100, cursor = null) {
+    // 防御：limit 钳制到 [1, 500]——负值/0/非数字直接归一，防 Mongoose .limit(负数) 报错（L3）
+    const safeLimit = Math.max(1, Math.min(Number.parseInt(limit, 10) || 100, 500));
     const sinceDate = new Date(since);
     const query = { userId };
 
@@ -128,10 +143,10 @@ class SyncService {
     const records = await model
       .find(query)
       .sort({ serverUpdateTime: -1, _id: -1 })
-      .limit(limit + 1);
+      .limit(safeLimit + 1);
 
-    const hasMore = records.length > limit;
-    const data = hasMore ? records.slice(0, limit) : records;
+    const hasMore = records.length > safeLimit;
+    const data = hasMore ? records.slice(0, safeLimit) : records;
     const last = data[data.length - 1];
     const nextCursor = hasMore ? `${last.serverUpdateTime.getTime()}:${last._id}` : null;
 

@@ -34,6 +34,9 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
+    // 用户作用域的本地数据一并清理：导出历史含上一账号的财务元数据，
+    // 共享电脑场景下残留属于隐私泄漏
+    localStorage.removeItem('export_history')
   }
 
   return { accessToken, refreshToken, user, isLoggedIn, setTokens, setUser, logout }

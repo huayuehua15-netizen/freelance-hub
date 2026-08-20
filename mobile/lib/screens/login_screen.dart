@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nameController = TextEditingController();
   bool _isLogin = true;
   bool _loading = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -47,13 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     AppLocalizations.t('appTitle'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     AppLocalizations.t('loginTagline'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.textSecondary),
+                    style: const TextStyle(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: 40),
                   if (!_isLogin)
@@ -80,8 +81,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: InputDecoration(labelText: AppLocalizations.t('password')),
-                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.t('password'),
+                      // 密码可见切换：长密码输入错误率高的场景刚需
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (v) {
                       final pwd = v ?? '';
@@ -92,6 +100,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+                  if (_isLogin)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _showForgotPasswordDialog,
+                        child: Text(AppLocalizations.t('forgotPassword'), style: const TextStyle(fontSize: 13)),
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   if (_error != null)
                     Padding(
@@ -144,6 +160,58 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// 忘记密码：输入邮箱发送重置链接（重置在邮件链接打开的 Web 页完成）。
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController(text: _emailController.text.trim());
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalizations.t('forgotPassword')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(AppLocalizations.t('forgotPasswordHint')),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(labelText: AppLocalizations.t('email')),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(AppLocalizations.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty) return;
+              try {
+                await context.read<AuthProvider>().forgotPassword(email);
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.t('resetLinkSent'))),
+                  );
+                }
+              } catch (_) {
+                // 统一成功文案（防枚举）；异常仅提示稍后重试
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.t('errors.networkError'))),
+                  );
+                }
+              }
+            },
+            child: Text(AppLocalizations.t('send')),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -158,6 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await auth.register(_emailController.text, _passwordController.text, _nameController.text.trim());
       }
+      if (!mounted) return;
       await _syncPremium(context);
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {

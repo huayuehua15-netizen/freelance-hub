@@ -6,9 +6,10 @@ const timeLogSchema = new mongoose.Schema({
   projectId: { type: String, required: true },
   startTime: { type: Number, required: true },
   endTime: { type: Number, default: null },
-  duration: { type: Number, default: 0 },
+  // min:0 防止客户端同步负值落库污染报表聚合（duration/金额都不应为负）
+  duration: { type: Number, default: 0, min: 0 },
   isBillable: { type: Boolean, default: true },
-  billableAmount: { type: Number, default: 0 },
+  billableAmount: { type: Number, default: 0, min: 0 },
   tag: { type: String, default: '' },
   note: { type: String, default: '' },
   isDeleted: { type: Boolean, default: false },

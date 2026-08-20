@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ===========================================================================
+     Adaptive Icon 定义（Android 8.0+ / API 26+）
+     ===========================================================================
+     - mipmap-anydpi-v26/ic_launcher.xml 优先级高于 mipmap-*/ic_launcher.png
+     - Android 7.0 及以下仍回退到 PNG 图标（已保留）
+     - 启动器会自动应用遮罩（圆形/方形/圆角方形/水滴形等），所以前景内容
+       必须在中心 66x66dp 安全区内，否则会被裁切
+     - background 用矢量图实现渐变，前景用矢量图实现时钟+账单组合
+     =========================================================================== -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <!-- Android 13+ 支持单色主题，应用图标可被系统着色 -->
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

@@ -99,8 +99,8 @@ class ApiService {
     return _request(() => _dio.put(path, data: data));
   }
 
-  Future<Map<String, dynamic>> delete(String path) async {
-    return _request(() => _dio.delete(path));
+  Future<Map<String, dynamic>> delete(String path, {dynamic data}) async {
+    return _request(() => _dio.delete(path, data: data));
   }
 
   Future<Map<String, dynamic>> _request(Future<Response> Function() call) async {

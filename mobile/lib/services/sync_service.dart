@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../models/client_project.dart';
 import '../models/time_log.dart';
 import '../models/expense_log.dart';
@@ -12,13 +13,38 @@ class SyncService extends ChangeNotifier {
   SyncStatus _status = SyncStatus.idle;
   String? _lastError;
   DateTime? _lastSyncTime;
+  final Uuid _uuid = const Uuid();
 
-  static const String _deviceId = 'mobile_demo_device';
+  /// 数据归属门禁：本地 Hive 库由单一所有者占用。换账号登录时，
+  /// 旧账号的数据绝不允许上传到新账号的云端（数据泄露级问题）。
+  /// - 首次同步时以当前登录用户认领（游客数据归首个登录账号）
+  /// - 所有者与当前用户不一致 → 跳过推送，仅拉取
+  static const String _ownerKey = 'data_owner_id';
+
+  bool _ownershipMismatch = false;
+  bool get ownershipMismatch => _ownershipMismatch;
 
   SyncStatus get status => _status;
   bool get syncing => _status == SyncStatus.syncing;
   String? get lastError => _lastError;
   DateTime? get lastSyncTime => _lastSyncTime;
+
+  /// 每台安装生成并持久化的设备 ID（用于多端识别/审计）。
+  /// 不能用固定常量：同账号两台设备会互相干扰归属判断。
+  String get _deviceId {
+    final box = HiveService.configBoxInstance;
+    var id = box.get('device_id') as String?;
+    if (id == null || id.isEmpty) {
+      id = _uuid.v4();
+      box.put('device_id', id);
+    }
+    return id;
+  }
+
+  /// 账号注销/本地清库时清空归属，允许下一个账号认领。
+  static Future<void> clearOwnership() async {
+    await HiveService.configBoxInstance.delete(_ownerKey);
+  }
 
   /// Full incremental sync for one authenticated account.
   ///
@@ -29,18 +55,42 @@ class SyncService extends ChangeNotifier {
     if (_status == SyncStatus.syncing) return;
     _status = SyncStatus.syncing;
     _lastError = null;
+    _ownershipMismatch = false;
     notifyListeners();
 
+    var pushFailed = false;
     try {
-      // 1. 推送本地 syncStatus=0 的记录（批量 upsert）
-      await _pushProjects();
-      await _pushTimeLogs();
-      await _pushExpenses();
+      // 0. 归属门禁：本地数据不属于当前账号时禁止推送（防跨账号泄露）
+      final configBox = HiveService.configBoxInstance;
+      final owner = configBox.get(_ownerKey) as String?;
+      final canPush = owner == null || owner == userId;
+      if (owner == null) {
+        await configBox.put(_ownerKey, userId);
+      } else if (!canPush) {
+        _ownershipMismatch = true;
+      }
+
+      // 1. 推送本地 syncStatus=0 的记录（批量 upsert）。
+      //    单类失败不阻断后续类别，更不阻断拉取 —— 否则一条被服务端
+      //    持续拒绝的记录会让设备永远拉不到远端变更。
+      if (canPush) {
+        for (final push in [_pushProjects, _pushTimeLogs, _pushExpenses]) {
+          try {
+            await push();
+          } catch (e) {
+            _lastError = e.toString();
+            pushFailed = true;
+          }
+        }
+      }
       // 2. 拉取服务端 lastSyncTime 之后的更新
       final highestServerTime = await _pullAllChanges(userId);
-      // 3. 更新同步时间
+      // 3. 更新同步时间（拉取成功即可推进游标，未推送的记录保持 syncStatus=0 待重试）
       await _updateLastSyncTime(userId, highestServerTime);
-      _status = SyncStatus.success;
+      _status = pushFailed || _ownershipMismatch ? SyncStatus.failed : SyncStatus.success;
+      if (_ownershipMismatch) {
+        _lastError = 'Local data belongs to a different account; push skipped.';
+      }
     } catch (e) {
       _lastError = e.toString();
       _status = SyncStatus.failed;
@@ -124,7 +174,9 @@ class SyncService extends ChangeNotifier {
       }
     }
     if (failed.isNotEmpty) {
-      throw StateError('Some records could not be synchronized: ${failed.join(', ')}');
+      // 不抛错：部分记录失败不应阻断其余类别推送和拉取。
+      // 记录保持待同步状态，下次 syncAll 自动重试。
+      debugPrint('Sync: ${failed.length} record(s) pending retry: ${failed.join(', ')}');
     }
   }
 

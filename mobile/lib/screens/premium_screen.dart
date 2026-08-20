@@ -5,8 +5,39 @@ import '../l10n/app_localizations.dart';
 import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
 
-class PremiumScreen extends StatelessWidget {
+class PremiumScreen extends StatefulWidget {
   const PremiumScreen({super.key});
+
+  @override
+  State<PremiumScreen> createState() => _PremiumScreenState();
+}
+
+class _PremiumScreenState extends State<PremiumScreen> {
+  // 商店真实价格（本地货币，含税费规则），null = offerings 不可用，回退参考价
+  String? _monthlyPrice;
+  String? _annualPrice;
+  bool _monthlyHasTrial = false;
+  bool _annualHasTrial = false;
+  bool _purchasing = false;
+  bool _restoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStorePrices();
+  }
+
+  Future<void> _loadStorePrices() async {
+    final premium = context.read<PremiumProvider>();
+    final info = await premium.fetchStoreProducts();
+    if (!mounted) return;
+    setState(() {
+      _monthlyPrice = info.monthlyPrice;
+      _annualPrice = info.annualPrice;
+      _monthlyHasTrial = info.monthlyHasTrial;
+      _annualHasTrial = info.annualHasTrial;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,15 +64,17 @@ class PremiumScreen extends StatelessWidget {
               AppLocalizations.t('feature.basicReports'),
             ],
             isSelected: premium.premiumType == PremiumType.free,
-            onTap: () => _switchPlan(context, premium, PremiumType.free),
+            onTap: () => _switchPlan(premium, PremiumType.free),
             cta: premium.premiumType == PremiumType.free ? AppLocalizations.t('currentPlan') : AppLocalizations.t('switchToFree'),
           ),
           const SizedBox(height: 16),
-          // 月度订阅
+          // 月度订阅：价格优先取商店（本地货币），试用期以商店 IntroductoryOffer 为准
           _buildPlanCard(
             title: AppLocalizations.t('planFreelancer'),
-            price: '\$4.79/month',
-            subtitle: AppLocalizations.t('sevenDayFreeTrial'),
+            price: _monthlyPrice ?? '\$4.79/month',
+            subtitle: _monthlyHasTrial
+                ? AppLocalizations.t('sevenDayFreeTrial')
+                : AppLocalizations.t('priceMayVary'),
             features: [
               AppLocalizations.t('feature.unlimitedProjects'),
               AppLocalizations.t('feature.timeTrackingWithTags'),
@@ -51,15 +84,17 @@ class PremiumScreen extends StatelessWidget {
               AppLocalizations.t('feature.fullHistoryAccess'),
             ],
             isSelected: premium.premiumType == PremiumType.monthly,
-            onTap: () => _switchPlan(context, premium, PremiumType.monthly),
+            onTap: _purchasing ? null : () => _switchPlan(premium, PremiumType.monthly),
             cta: premium.premiumType == PremiumType.monthly ? AppLocalizations.t('currentPlan') : AppLocalizations.t('startFreeTrial'),
           ),
           const SizedBox(height: 16),
           // 年度订阅
           _buildPlanCard(
             title: AppLocalizations.t('planContractor'),
-            price: '\$37.99/year',
-            subtitle: AppLocalizations.t('saveBestValue'),
+            price: _annualPrice ?? '\$37.99/year',
+            subtitle: _annualHasTrial
+                ? AppLocalizations.t('sevenDayFreeTrial')
+                : AppLocalizations.t('saveBestValue'),
             features: [
               AppLocalizations.t('feature.everythingInFreelancer'),
               AppLocalizations.t('feature.annualTaxSummaryReport'),
@@ -71,29 +106,20 @@ class PremiumScreen extends StatelessWidget {
             ],
             isSelected: premium.premiumType == PremiumType.annual,
             highlighted: true,
-            onTap: () => _switchPlan(context, premium, PremiumType.annual),
+            onTap: _purchasing ? null : () => _switchPlan(premium, PremiumType.annual),
             cta: premium.premiumType == PremiumType.annual ? AppLocalizations.t('currentPlan') : AppLocalizations.t('getAnnualPlan'),
           ),
           const SizedBox(height: 24),
           // 恢复购买
           TextButton(
-            onPressed: () async {
-              try {
-                await premium.restorePurchases();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.t('purchasesRestored'))),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.t1('errors.restoreFailed', {'error': '$e'}))),
-                  );
-                }
-              }
-            },
-            child: Text(AppLocalizations.t('restorePurchase')),
+            onPressed: _restoring ? null : () => _restorePurchases(premium),
+            child: _restoring
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(AppLocalizations.t('restorePurchase')),
           ),
           const SizedBox(height: 8),
           Text(
@@ -108,29 +134,60 @@ class PremiumScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _switchPlan(BuildContext context, PremiumProvider premium, PremiumType type) async {
+  Future<void> _restorePurchases(PremiumProvider premium) async {
+    setState(() => _restoring = true);
+    try {
+      await premium.restorePurchases();
+      if (!mounted) return;
+      // 如实反馈：恢复后仍是 free 档说明本账号没有可恢复的订阅
+      final msg = premium.isPremium
+          ? AppLocalizations.t('purchasesRestored')
+          : AppLocalizations.t('noPurchasesToRestore');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.t1('errors.restoreFailed', {'error': '$e'}))),
+      );
+    } finally {
+      if (mounted) setState(() => _restoring = false);
+    }
+  }
+
+  Future<void> _switchPlan(PremiumProvider premium, PremiumType type) async {
     if (type == PremiumType.free) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.t('manageSubscriptionHint'))),
       );
       return;
     }
+    // 购买进行中锁定按钮：结算弹窗期间双击会重复发起购买
+    setState(() => _purchasing = true);
     try {
       if (type == PremiumType.monthly) {
         await premium.purchaseMonthly();
       } else {
         await premium.purchaseAnnual();
       }
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.t('purchaseComplete'))),
       );
       Navigator.pop(context);
+    } on PurchaseCanceledException {
+      // 用户主动取消购买（关闭 Google Play 结算弹窗）：
+      // 静默友好提示，不当作错误，不打扰用户。
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.t('purchaseCanceled'))),
+      );
     } catch (e) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.t1('errors.purchaseFailed', {'error': '$e'}))),
       );
+    } finally {
+      if (mounted) setState(() => _purchasing = false);
     }
   }
 
@@ -141,7 +198,7 @@ class PremiumScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.warning.withOpacity(0.1),
+        color: AppTheme.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -166,7 +223,7 @@ class PremiumScreen extends StatelessWidget {
     required List<String> features,
     required bool isSelected,
     bool highlighted = false,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     required String cta,
   }) {
     return Card(

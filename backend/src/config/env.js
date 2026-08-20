@@ -12,6 +12,23 @@ if (isProd) {
         'Set them in .env before starting the server.'
     );
   }
+  // 生产环境绝不允许演示特权：注册默认 annual = 全员免费用一年，属部署事故级风险
+  if (String(process.env.DEMO_ANNUAL_BY_DEFAULT).toLowerCase() === 'true') {
+    throw new Error(
+      '[config] DEMO_ANNUAL_BY_DEFAULT must NOT be enabled in production. ' +
+        'Demo entitlement grants are for local/staging only.'
+    );
+  }
+}
+
+// 演示开关：仅本地/联调环境显式开启后，注册用户才默认拿到 annual(+1 年)。
+// 默认关闭——即使 NODE_ENV 漏配为 production，注册也只会是 free，杜绝误上线事故。
+const demoAnnualByDefault =
+  !isProd && String(process.env.DEMO_ANNUAL_BY_DEFAULT).toLowerCase() === 'true';
+
+if (demoAnnualByDefault) {
+  // 联调/演示时能看到明确提示，避免"为什么注册是 free"的困惑
+  console.warn('[config] DEMO_ANNUAL_BY_DEFAULT=true: new registrations will be annual for demo purposes.');
 }
 
 module.exports = {
@@ -26,10 +43,18 @@ module.exports = {
     refreshExpires: process.env.JWT_REFRESH_EXPIRES || '30d',
   },
   bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS) || 12,
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'Freelance Hub <no-reply@freelancehub.app>',
+  },
   revenuecat: {
     webhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || 'dev_webhook_secret',
     apiKey: process.env.REVENUECAT_API_KEY || 'dev_api_key',
   },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   isProd,
+  demoAnnualByDefault,
 };

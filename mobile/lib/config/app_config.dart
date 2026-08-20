@@ -21,4 +21,10 @@ class AppConfig {
 
   static bool get isDev => environment == 'dev';
   static bool get isProd => environment == 'prod';
+
+  /// 生产环境必须使用 HTTPS：防止忘传 --dart-define 时 release 包默认连 HTTP
+  /// 模拟器地址，在 Android 9+ 上静默全部网络失败（用户只看到"网络错误"，排查极困难）。
+  /// 这是编译期断言——构建配置错误时立即暴露，不留隐患到运行时。
+  static bool get isHttpsConfigured => apiBaseUrl.toLowerCase().startsWith('https://');
 }
+

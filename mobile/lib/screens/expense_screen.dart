@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/expense_log.dart';
 import '../providers/expense_provider.dart';
+import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
+import '../utils/free_tier_gate.dart';
 import '../widgets/empty_state.dart';
 
 class ExpenseScreen extends StatefulWidget {
@@ -23,7 +25,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final expenseProvider = context.watch<ExpenseProvider>();
-    final allExpenses = expenseProvider.expenses;
+    // Free 版仅当月（付费墙承诺）：列表同步受限并显示升级提示
+    final isFree = context.watch<PremiumProvider>().isFree;
+    final allExpenses = FreeTierGate.visible(expenseProvider.expenses, isFree, (e) => e.expenseDate);
     var expenses = allExpenses;
     if (_selectedCategory != null) {
       expenses = expenses.where((e) => e.category == _selectedCategory).toList();
@@ -73,6 +77,35 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             ),
       body: Column(
         children: [
+          // Free 版历史锁定提示：说明为何看不到更早的记录
+          if (isFree)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: InkWell(
+                onTap: () => Navigator.pushNamed(context, '/premium'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock_outline, size: 16, color: AppTheme.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          AppLocalizations.t('freeHistoryLocked'),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.primary),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, size: 16, color: AppTheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           // Filter chips row
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -82,7 +115,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   label: Text(AppLocalizations.t('deductibleOnly')),
                   selected: _deductibleOnly,
                   onSelected: (v) => setState(() => _deductibleOnly = v),
-                  selectedColor: AppTheme.success.withOpacity(0.15),
+                  selectedColor: AppTheme.success.withValues(alpha: 0.15),
                   checkmarkColor: AppTheme.success,
                 ),
                 const SizedBox(width: 8),
@@ -231,7 +264,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         child: ListTile(
           leading: CircleAvatar(
             backgroundColor: expense.isTaxDeductible
-                ? AppTheme.success.withOpacity(0.1)
+                ? AppTheme.success.withValues(alpha: 0.1)
                 : AppTheme.border,
             child: Icon(
               _categoryIcon(expense.category),

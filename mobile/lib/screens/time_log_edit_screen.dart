@@ -72,7 +72,7 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           DropdownButtonFormField<String?>(
-            value: _projectId,
+            initialValue: _projectId,
             decoration: InputDecoration(labelText: AppLocalizations.t('project')),
             items: items,
             onChanged: (v) => setState(() => _projectId = v),
@@ -169,7 +169,8 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
       ..endTime = _end.millisecondsSinceEpoch
       ..duration = _durationHours
       ..isBillable = _isBillable
-      ..billableAmount = double.parse((_durationHours * rate).toStringAsFixed(2))
+      // 非计费工时不产生收入：金额必须清零，否则收入/净收入/自雇税估算全部虚高
+      ..billableAmount = _isBillable ? double.parse((_durationHours * rate).toStringAsFixed(2)) : 0.0
       ..tag = _tagController.text.trim()
       ..note = _noteController.text.trim();
     await provider.updateTimeLog(t);
@@ -197,6 +198,7 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
       ),
     );
     if (confirmed != true) return;
+    if (!mounted) return;
     await context.read<TimelogProvider>().deleteTimeLog(widget.timeLog.timeLogId);
     if (mounted) Navigator.pop(context);
   }

@@ -4,12 +4,27 @@ const ExpenseLog = require('../models/ExpenseLog');
 const ClientProject = require('../models/ClientProject');
 const { ERROR_CODES } = require('../utils/constants');
 const { t } = require('../utils/i18n');
+const { getYearBounds, getMonthBounds } = require('../utils/timezone');
+
+// 从已加载的 req.user 上取时区；非法或缺失时回退到默认，避免报表崩溃。
+// 注意：报表正确性依赖此时区——跨时区用户的工时/开支必须按本地月份/年份归类，
+// 否则税务数据会出错（例如美东 1/31 23:00 工作到 2/1 00:00，UTC 落在 2 月，但应归 1 月）。
+const resolveTimezone = (req) => {
+  const tz = req?.user?.timezone;
+  return tz && typeof tz === 'string' ? tz : 'America/New_York';
+};
+
+// 报表默认年/月必须按用户时区计算：UTC+13 用户在本地 12/31 23:30 请求时，
+// UTC 已是次年 1 月，服务器时钟会给出错误的默认月份。
+const nowInTz = (timezone) => require('luxon').DateTime.now().setZone(timezone);
 
 const getMonthly = async (req, res, next) => {
   try {
     const { year, month, projectId } = req.query;
-    const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
-    const monthNum = month == null ? new Date().getMonth() + 1 : Number.parseInt(month, 10);
+    const timezone = resolveTimezone(req);
+    const nowTz = nowInTz(timezone);
+    const yearNum = year == null ? nowTz.year : Number.parseInt(year, 10);
+    const monthNum = month == null ? nowTz.month : Number.parseInt(month, 10);
     if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100 ||
         !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
       return res.status(400).json({
@@ -20,7 +35,7 @@ const getMonthly = async (req, res, next) => {
       });
     }
 
-    const report = await ReportService.getMonthlyReport(req.userId, yearNum, monthNum, projectId);
+    const report = await ReportService.getMonthlyReport(req.userId, yearNum, monthNum, projectId, timezone);
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
@@ -36,12 +51,13 @@ const getMonthly = async (req, res, next) => {
 const getAnnual = async (req, res, next) => {
   try {
     const { year } = req.query;
-    const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
+    const timezone = resolveTimezone(req);
+    const yearNum = year == null ? nowInTz(timezone).year : Number.parseInt(year, 10);
     if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
       return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearInvalid', req.lang), data: null, timestamp: Date.now() });
     }
 
-    const report = await ReportService.getAnnualReport(req.userId, yearNum);
+    const report = await ReportService.getAnnualReport(req.userId, yearNum, timezone);
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,
@@ -97,7 +113,8 @@ const exportPdf = async (req, res, next) => {
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100 || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
         return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearMonthRequired', req.lang), data: null, timestamp: Date.now() });
       }
-      const report = await ReportService.getMonthlyReport(req.userId, yearNum, monthNum);
+      const timezone = resolveTimezone(req);
+      const report = await ReportService.getMonthlyReport(req.userId, yearNum, monthNum, null, timezone);
 
       const pdfBuffer = await buildPdf(report, 'Freelance Hub Monthly Report', `monthly_report_${yearNum}_${monthNum}.pdf`);
       res.setHeader('Content-Type', 'application/pdf');
@@ -110,7 +127,8 @@ const exportPdf = async (req, res, next) => {
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
         return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearRequired', req.lang), data: null, timestamp: Date.now() });
       }
-      const report = await ReportService.getAnnualReport(req.userId, yearNum);
+      const timezone = resolveTimezone(req);
+      const report = await ReportService.getAnnualReport(req.userId, yearNum, timezone);
 
       const pdfBuffer = await buildPdf(report, 'Freelance Hub Annual Tax Summary', `annual_tax_summary_${yearNum}.pdf`);
       res.setHeader('Content-Type', 'application/pdf');
@@ -133,7 +151,10 @@ const exportPdf = async (req, res, next) => {
 const toCsv = (rows) => {
   const escape = (v) => {
     if (v === null || v === undefined) return '';
-    const s = String(v);
+    let s = String(v);
+    // 公式注入防护：以 = + - @ 开头的单元格在 Excel 中会被解释为公式，
+    // 商家名/备注/标签等用户可控字段必须加前缀破坏公式语义。
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return rows.map((r) => r.map(escape).join(',')).join('\r\n') + '\r\n';
@@ -147,8 +168,9 @@ const exportCsv = async (req, res, next) => {
       return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearRequired', req.lang), data: null, timestamp: Date.now() });
     }
 
-    const startDate = new Date(Date.UTC(yearNum, 0, 1)).getTime();
-    const endDate = new Date(Date.UTC(yearNum + 1, 0, 1)).getTime();
+    // 按用户时区计算年界，避免跨年工时/开支因 UTC 偏移被归错年度（税务导出必须准确）。
+    const timezone = resolveTimezone(req);
+    const { start: startDate, end: endDate } = getYearBounds(yearNum, timezone);
     const [projects, timeLogs, expenses] = await Promise.all([
       ClientProject.find({ userId: req.userId, isDeleted: false }),
       TimeLog.find({ userId: req.userId, isDeleted: false, startTime: { $gte: startDate, $lt: endDate } }),

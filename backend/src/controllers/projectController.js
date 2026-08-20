@@ -1,6 +1,6 @@
 const ClientProject = require('../models/ClientProject');
 const SyncService = require('../services/syncService');
-const { ERROR_CODES, FREE_PROJECT_LIMIT, PREMIUM_TYPES } = require('../utils/constants');
+const { ERROR_CODES, FREE_PROJECT_LIMIT, PREMIUM_TYPES, SYNC_BATCH_LIMIT } = require('../utils/constants');
 const { t } = require('../utils/i18n');
 
 const batchUpsert = async (req, res, next) => {
@@ -10,6 +10,14 @@ const batchUpsert = async (req, res, next) => {
       return res.status(400).json({
         code: ERROR_CODES.BAD_REQUEST,
         msg: t('errors.sync.projectsArrayRequired', req.lang),
+        data: null,
+        timestamp: Date.now(),
+      });
+    }
+    if (projects.length > SYNC_BATCH_LIMIT) {
+      return res.status(400).json({
+        code: ERROR_CODES.BAD_REQUEST,
+        msg: t('errors.sync.batchTooLarge', req.lang),
         data: null,
         timestamp: Date.now(),
       });
@@ -35,7 +43,7 @@ const pull = async (req, res, next) => {
   try {
     const { since, limit, cursor } = req.query;
     const sinceTime = parseInt(since) || 0;
-    const limitNum = Math.min(parseInt(limit) || 100, 200);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 100, 1), 200);
 
     const result = await SyncService.pullSince(req.userId, ClientProject, sinceTime, limitNum, cursor);
 
@@ -71,7 +79,7 @@ const list = async (req, res, next) => {
       });
     }
 
-    const limitNum = Math.min(parseInt(limit) || 50, 200);
+    const limitNum = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
     if (cursor) query.serverUpdateTime = { $lt: new Date(parseInt(cursor)) };
 
     const projects = await ClientProject.find(query).sort({ serverUpdateTime: -1 }).limit(limitNum + 1);

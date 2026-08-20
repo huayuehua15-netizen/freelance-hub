@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_info.dart';
+import '../services/background_task_service.dart';
 import '../services/hive_service.dart';
 import '../services/api_service.dart';
 import '../utils/currency_format.dart';
@@ -12,10 +13,19 @@ class AuthProvider extends ChangeNotifier {
   String? _accessToken;
   String? _refreshToken;
 
+  // 邮箱验证状态（内存态，随 /auth/me 刷新）：不写入 Hive——持久化一个
+  // 可能过期的验证状态只会造成误判，横幅消失与否以服务端为准。
+  bool _emailVerified = true;
+  bool _emailVerificationAvailable = false;
+
   UserInfo? get user => _user;
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   bool get isLoggedIn => _accessToken != null && _user != null;
+  bool get emailVerified => _emailVerified;
+  bool get emailVerificationAvailable => _emailVerificationAvailable;
+  bool get showEmailVerificationBanner =>
+      isLoggedIn && !_emailVerified && _emailVerificationAvailable;
 
   static const _kAccess = 'auth_access_token';
   static const _kRefresh = 'auth_refresh_token';
@@ -49,17 +59,32 @@ class AuthProvider extends ChangeNotifier {
     _accessToken = null;
     _refreshToken = null;
     await _clearStorage();
+    // 取消所有后台任务：登出后不再有登录用户，后台同步和计时提醒都应停止。
+    // 注意：cancelAll 不影响未结束的计时（计时状态由 TimelogProvider 单独管理，
+    // 这里只清理 workmanager 调度，避免向已登出设备发同步请求）。
+    try {
+      await BackgroundTaskService.cancelAll();
+    } catch (e) {
+      debugPrint('cancelAll on logout failed: $e');
+    }
     notifyListeners();
   }
 
-  /// GDPR 账户删除（§7.2）：先调后端软删除（30 天宽限期），再清空本机用户数据。
-  Future<void> deleteAccount() async {
-    await ApiService().delete('/auth/account');
+  /// GDPR 账户删除（§7.2）：先调后端软删除（30 天宽限期，需密码确认身份），
+  /// 再清空本机用户数据。
+  Future<void> deleteAccount({required String password}) async {
+    await ApiService().delete('/auth/account', data: {'currentPassword': password});
     await _clearLocalData();
     _user = null;
     _accessToken = null;
     _refreshToken = null;
     await _clearStorage();
+    // 账号删除后所有后台任务都应停止。
+    try {
+      await BackgroundTaskService.cancelAll();
+    } catch (e) {
+      debugPrint('cancelAll on deleteAccount failed: $e');
+    }
     notifyListeners();
   }
 
@@ -69,6 +94,9 @@ class AuthProvider extends ChangeNotifier {
       await HiveService.timeLogBoxInstance.clear();
       await HiveService.expenseBoxInstance.clear();
       await HiveService.userBoxInstance.clear();
+      // 清空数据归属与设备 ID：本机数据已清空，下一个账号重新认领
+      await HiveService.configBoxInstance.delete('data_owner_id');
+      await HiveService.configBoxInstance.delete('device_id');
     } catch (_) {
       // 清理失败不阻断退出登录流程
     }
@@ -80,6 +108,16 @@ class AuthProvider extends ChangeNotifier {
     _refreshToken = refresh;
     await _persistTokens();
     notifyListeners();
+  }
+
+  /// 忘记密码：发送重置邮件到任意邮箱（后端统一 200 防枚举）。
+  Future<void> forgotPassword(String email) async {
+    await ApiService().post('/auth/forgot-password', data: {'email': email});
+  }
+
+  /// 重发邮箱验证邮件（后端 60s 防轰炸，429 时抛错由 UI 提示）。
+  Future<void> resendEmailVerification() async {
+    await ApiService().post('/auth/resend-verification');
   }
 
   Future<void> loadFromStorage() async {
@@ -134,7 +172,7 @@ class AuthProvider extends ChangeNotifier {
       _user = UserInfo(
         userId: (data['userId'] as String?) ?? previous.userId,
         userName: (data['userName'] as String?) ?? previous.userName,
-        userEmail: (data['email'] as String?) ?? previous.userEmail,
+        userEmail: (data['userEmail'] as String?) ?? previous.userEmail,
         currency: (data['currency'] as String?) ?? previous.currency,
         timezone: (data['timezone'] as String?) ?? previous.timezone,
         isPremium: (data['premiumType'] as String? ?? previous.premiumType) != 'free',
@@ -145,6 +183,8 @@ class AuthProvider extends ChangeNotifier {
         createdAt: previous.createdAt,
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       );
+      _emailVerified = (data['emailVerified'] as bool?) ?? true;
+      _emailVerificationAvailable = (data['emailVerificationAvailable'] as bool?) ?? false;
       CurrencyFormat.current = _user!.currency;
       await _persistSession();
       notifyListeners();
@@ -199,6 +239,13 @@ class AuthProvider extends ChangeNotifier {
     );
     CurrencyFormat.current = _user!.currency;
     await _persistSession();
+    // 注册后台同步任务：登录成功后立刻注册，确保未同步数据在系统调度窗口内
+    // 自动同步到云端。用 keep 策略，重复注册不会抛错。
+    try {
+      await BackgroundTaskService.registerBackgroundSync();
+    } catch (e) {
+      debugPrint('registerBackgroundSync on login failed: $e');
+    }
     notifyListeners();
   }
 

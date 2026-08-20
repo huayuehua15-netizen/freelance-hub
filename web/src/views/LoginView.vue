@@ -27,8 +27,14 @@
         <el-button type="primary" :loading="loading" class="login-btn" @click="handleLogin">
           {{ t('login.submit') }}
         </el-button>
+        <p class="forgot-link">
+          <router-link to="/forgot-password">{{ t('login.forgotPassword') }}</router-link>
+        </p>
       </el-form>
       <p class="hint">{{ t('login.hint') }}</p>
+      <p class="legal-link">
+        <router-link to="/privacy">{{ t('login.privacyPolicy') }}</router-link>
+      </p>
     </div>
   </div>
 </template>
@@ -144,10 +150,35 @@ const handleLogin = async () => {
 .login-btn {
   width: 100%;
 }
+.forgot-link {
+  text-align: right;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.forgot-link a {
+  color: #2563eb;
+  text-decoration: none;
+}
+.forgot-link a:hover {
+  text-decoration: underline;
+}
 .hint {
   text-align: center;
   color: #94a3b8;
   font-size: 12px;
   margin-top: 16px;
+}
+.legal-link {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.legal-link a {
+  color: #64748b;
+  text-decoration: none;
+}
+.legal-link a:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 </style>

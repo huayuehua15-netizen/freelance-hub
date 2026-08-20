@@ -75,7 +75,7 @@ class _TimerScreenState extends State<TimerScreen> {
     }
     if (projects.activeProjects.isEmpty) {
       return Card(
-        color: AppTheme.primary.withOpacity(0.06),
+        color: AppTheme.primary.withValues(alpha: 0.06),
         child: ListTile(
           leading: const Icon(Icons.info_outline, color: AppTheme.primary),
           title: Text(AppLocalizations.t('noProjectYet')),
@@ -85,7 +85,7 @@ class _TimerScreenState extends State<TimerScreen> {
       );
     }
     return DropdownButtonFormField<String>(
-      value: timer.currentProjectId,
+      initialValue: timer.currentProjectId,
       decoration: InputDecoration(labelText: AppLocalizations.t('selectProject')),
       items: projects.activeProjects.map((p) {
         return DropdownMenuItem(
@@ -101,7 +101,7 @@ class _TimerScreenState extends State<TimerScreen> {
 
   Widget _buildUpgradeHint() {
     return Card(
-      color: AppTheme.primary.withOpacity(0.06),
+      color: AppTheme.primary.withValues(alpha: 0.06),
       child: ListTile(
         leading: const Icon(Icons.lock_outline, color: AppTheme.primary),
         title: Text(AppLocalizations.t('freePlanLimitReached')),
@@ -218,11 +218,36 @@ class _TimerScreenState extends State<TimerScreen> {
             ),
             const SizedBox(width: 12),
             IconButton(
-              onPressed: timer.cancelTimer,
+              // 丢弃是破坏性且不可恢复的操作：必须二次确认
+              onPressed: () => _confirmCancelTimer(timer),
               icon: const Icon(Icons.close, color: AppTheme.danger),
             ),
           ],
         );
+    }
+  }
+
+  void _confirmCancelTimer(TimelogProvider timerProvider) async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(AppLocalizations.t('cancelTimerTitle')),
+        content: Text(AppLocalizations.t('cancelTimerBody')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(AppLocalizations.t('keepTracking')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(AppLocalizations.t('discard')),
+          ),
+        ],
+      ),
+    );
+    if (discard == true) {
+      await timerProvider.cancelTimer();
     }
   }
 }

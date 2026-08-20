@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  data-extraction-rules (Android 12+, API 31+):
+  控制设备到设备的迁移（migration）与云端备份（backup）能导出哪些数据。
+  作为财务/税务工具，禁止任何自动备份通道，避免加密的 Hive 数据库与
+  flutter_secure_storage 密钥被复制到攻击者控制的设备。
+  - allowBackupRules 阞盖全量备份场景
+  - deviceTransferRules 阞盖设备迁移场景
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

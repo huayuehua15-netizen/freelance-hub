@@ -9,6 +9,8 @@ import 'providers/project_provider.dart';
 import 'providers/timelog_provider.dart';
 import 'providers/expense_provider.dart';
 import 'providers/locale_provider.dart';
+import 'providers/app_init_notifier.dart';
+import 'services/background_task_service.dart';
 import 'services/hive_service.dart';
 import 'services/api_service.dart';
 import 'services/notification_service.dart';
@@ -30,6 +32,7 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
   final ExpenseProvider _expenseProvider = ExpenseProvider();
   final LocaleProvider _localeProvider = LocaleProvider();
   final SyncService _syncService = SyncService();
+  final AppInitNotifier _appInitNotifier = AppInitNotifier();
 
   @override
   void initState() {
@@ -40,27 +43,45 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
   }
 
   Future<void> _initializeApp() async {
-    try {
-      await HiveService.init();
-      ApiService().setAuthProvider(_authProvider);
-      await _authProvider.loadFromStorage();
-      await _authProvider.refreshCurrentUser();
-      await _premiumProvider.initialize(appUserId: _authProvider.user?.userId);
-      _syncPremiumFromUser();
-      await _localeProvider.loadLocale();
-      // Initialise notifications before restoring a timer so a recovered
-      // running session can safely recreate its foreground notification.
-      await NotificationService.init();
-      await _timelogProvider.recoverTimer();
-      await DemoDataSeeder.seedIfEmpty();
+    // 每个步骤独立容错：任何一步失败（如离线时 RevenueCat/后端不可达）
+    // 不得中断后续步骤 —— 计时恢复和本地数据加载是离线优先架构的命门。
+    Future<void> safeStep(String name, Future<void> Function() step) async {
+      try {
+        await step();
+      } catch (e) {
+        debugPrint('Init step "$name" failed (degraded): $e');
+      }
+    }
+
+    await safeStep('hive', () => HiveService.init());
+    await safeStep('api', () async => ApiService().setAuthProvider(_authProvider));
+    await safeStep('restoreSession', () => _authProvider.loadFromStorage());
+    await safeStep('refreshCurrentUser', () => _authProvider.refreshCurrentUser());
+    await safeStep('revenuecat', () => _premiumProvider.initialize(appUserId: _authProvider.user?.userId));
+    _syncPremiumFromUser();
+    await safeStep('locale', () => _localeProvider.loadLocale());
+    // Initialise notifications before restoring a timer so a recovered
+    // running session can safely recreate its foreground notification.
+    await safeStep('notifications', () => NotificationService.init());
+    await safeStep('recoverTimer', () => _timelogProvider.recoverTimer());
+    await safeStep('demoSeed', () => DemoDataSeeder.seedIfEmpty(isLoggedIn: _authProvider.isLoggedIn));
+    await safeStep('loadData', () async {
       await _projectProvider.loadProjects();
       await _timelogProvider.loadTimeLogs();
       await _expenseProvider.loadExpenses();
-      await NotificationService.requestPermission();
-      await _premiumProvider.checkExpiryReminder();
-    } catch (e) {
-      // 初始化失败不阻断启动，降级为本地模式
+    });
+    await safeStep('notificationPermission', () => NotificationService.requestPermission());
+    await safeStep('expiryReminder', () => _premiumProvider.checkExpiryReminder());
+    // 注册后台同步任务：仅登录用户需要。游客没有云端账号，注册了也是空跑。
+    // 用 keep 策略，重复注册不会抛错。
+    if (_authProvider.isLoggedIn) {
+      await safeStep('backgroundSync', () => BackgroundTaskService.registerBackgroundSync());
     }
+    // 如果启动时存在 running 计时，恢复晚间提醒任务。
+    if (_timelogProvider.timerState != TimerState.idle) {
+      await safeStep('timerReminder', () => BackgroundTaskService.registerTimerReminder());
+    }
+    _appInitNotifier.markInitialized();
   }
 
   /// Login/session restoration updates local entitlement state without
@@ -86,6 +107,7 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
         ChangeNotifierProvider.value(value: _expenseProvider),
         ChangeNotifierProvider.value(value: _localeProvider),
         ChangeNotifierProvider.value(value: _syncService),
+        ChangeNotifierProvider.value(value: _appInitNotifier),
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, localeProvider, _) => MaterialApp(

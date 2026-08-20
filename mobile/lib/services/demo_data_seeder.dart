@@ -11,9 +11,19 @@ import 'hive_service.dart';
 class DemoDataSeeder {
   static const Uuid _uuid = Uuid();
 
-  static Future<void> seedIfEmpty() async {
+  static Future<void> seedIfEmpty({bool isLoggedIn = false}) async {
     // 已有数据则跳过，避免覆盖用户真实录入
     if (HiveService.projectBoxInstance.isNotEmpty) return;
+
+    // 已登录用户跳过 seed：换新设备的真实用户应先拉取云端数据；
+    // 种子数据标记 syncStatus=0，一旦推送会污染真实云端账号
+    // （Acme 假项目会出现在 Web 大屏）。
+    if (isLoggedIn) return;
+
+    // 云端数据已有归属（本机曾同步过其他账号）也跳过
+    final configBox = HiveService.configBoxInstance;
+    final owner = configBox.get('data_owner_id') as String?;
+    if (owner != null && owner.isNotEmpty) return;
 
     final p1 = _project('Acme Corp', 'billing@acmecorp.com', 'Website Redesign', 45);
     final p2 = _project('StartupXYZ', 'ops@startupxyz.io', 'Mobile UI Kit Design', 50);

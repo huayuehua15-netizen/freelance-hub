@@ -1,0 +1,22 @@
+# ===========================================================================
+# Release 签名配置示例
+# ===========================================================================
+# 用法：
+#   1. 复制本文件为 key.properties（同目录，已被 .gitignore 忽略）
+#   2. 用 keytool 生成 keystore：
+#        keytool -genkey -v -keystore freelance-hub.jks \
+#          -keyalg RSA -keysize 2048 -validity 10000 \
+#          -alias freelance-hub
+#   3. 把生成的 .jks 文件路径填到 storeFile（建议放在 android/app/ 下）
+#   4. 填写下面四项
+#
+# ⚠️ 安全须知：
+#   - key.properties 和 *.jks 都不能进版本库（.gitignore 已忽略）
+#   - keystore 密码丢失就无法更新应用，请用密码管理器保存
+#   - 上架 Google Play 后只能用同一 keystore 升级，丢失只能重发应用
+# ===========================================================================
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=freelance-hub
+storeFile=../app/freelance-hub.jks

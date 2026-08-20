@@ -100,6 +100,19 @@ class ProjectProvider extends ChangeNotifier {
     await loadProjects();
   }
 
+  /// 归档恢复：归档确认弹窗承诺「可随时恢复」，此为兑现该承诺的实现。
+  Future<void> restoreProject(String projectId) async {
+    final box = HiveService.projectBoxInstance;
+    final project = box.get(projectId);
+    if (project != null && project.status == 'archived') {
+      project.status = 'active';
+      project.syncStatus = 0;
+      project.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      await project.save();
+    }
+    await loadProjects();
+  }
+
   ClientProject? getProjectById(String projectId) {
     try {
       return _projects.firstWhere((p) => p.projectId == projectId);

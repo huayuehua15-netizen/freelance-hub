@@ -38,6 +38,7 @@
             <span class="user-info">{{ user?.userName || user?.email || t('common.user') }}</span>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item command="deleteAccount" divided>{{ t('common.deleteAccount') }}</el-dropdown-item>
                 <el-dropdown-item command="logout">{{ t('common.logout') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -55,6 +56,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useLocaleStore } from '../stores/locale'
 
@@ -94,6 +96,51 @@ const handleCommand = async (cmd) => {
     }
     authStore.logout()
     router.push('/login')
+    return
+  }
+
+  // GDPR 账号删除：双重确认（输入 DELETE + 输入密码——后端要求密码
+  // 二次验证，防止有效会话被盗设备直接删除账号）；
+  // 成功后清空本地会话并跳登录页（后端软删，30 天宽限期）。
+  if (cmd === 'deleteAccount') {
+    try {
+      const confirm = await ElMessageBox.prompt(
+        t('common.deleteAccountConfirm'),
+        t('common.deleteAccountTitle'),
+        {
+          confirmButtonText: t('common.confirm'),
+          cancelButtonText: t('common.cancel'),
+          inputPlaceholder: t('common.deleteAccountPlaceholder'),
+          inputValidator: (val) => val === 'DELETE' || t('common.deleteAccountPlaceholder'),
+          type: 'warning',
+        }
+      )
+      if (confirm.value !== 'DELETE') return
+
+      const passwordPrompt = await ElMessageBox.prompt(
+        t('common.deleteAccountPasswordMsg'),
+        t('common.deleteAccountTitle'),
+        {
+          confirmButtonText: t('common.confirm'),
+          cancelButtonText: t('common.cancel'),
+          inputPattern: /\S+/,
+          inputErrorMessage: t('common.deleteAccountPlaceholder'),
+          inputType: 'password',
+          type: 'warning',
+        }
+      )
+
+      const { authApi } = await import('../api')
+      await authApi.deleteAccount(passwordPrompt.value)
+      authStore.logout()
+      ElMessage.success(t('common.deleteAccountSuccess'))
+      router.push('/login')
+    } catch (e) {
+      // ElMessageBox 取消会 reject 'cancel'，这里只在真实请求失败时提示
+      if (e && e !== 'cancel' && e !== 'close') {
+        ElMessage.error(e?.response?.data?.msg || t('common.deleteAccountFailed'))
+      }
+    }
   }
 }
 </script>

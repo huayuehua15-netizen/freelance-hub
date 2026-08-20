@@ -12,6 +12,11 @@
       "invalidToken": "Invalid or expired token",
       "emailExists": "Email already registered",
       "invalidCredentials": "Invalid email or password",
+      "passwordRequired": "Account password is required to confirm this action",
+      "passwordMismatch": "Password is incorrect",
+      "resetTokenInvalid": "Reset link is invalid or has expired. Please request a new one.",
+      "verificationTokenInvalid": "Verification link is invalid or has already been used.",
+      "alreadyVerified": "This email address is already verified",
       "refreshTokenRequired": "Refresh token required",
       "refreshTokenInvalid": "Refresh token expired or invalid, please login again",
       "refreshTokenExpired": "Refresh token expired, please login again"
@@ -20,7 +25,12 @@
       "emailRequired": "A valid email address is required",
       "passwordInvalid": "Password must be at least 8 characters and include a letter and a number",
       "userNameTooLong": "User name must be 100 characters or fewer",
-      "emailPasswordRequired": "Email and password are required"
+      "emailPasswordRequired": "Email and password are required",
+      "invalidTimezone": "Invalid timezone identifier",
+      "invalidCurrency": "Invalid currency code",
+      "invalidInput": "Invalid input data",
+      "payloadTooLarge": "Request payload exceeds the 10MB limit",
+      "malformedJson": "Request body is not valid JSON"
     },
     "project": {
       "notFound": "Project not found"
@@ -45,7 +55,8 @@
     "sync": {
       "projectsArrayRequired": "projects must be an array",
       "timelogsArrayRequired": "timeLogs must be an array",
-      "expensesArrayRequired": "expenses must be an array"
+      "expensesArrayRequired": "expenses must be an array",
+      "batchTooLarge": "Too many records in a single sync request (max 500)"
     },
     "premium": {
       "requiresMonthly": "This feature requires a Monthly or Annual subscription",
@@ -54,11 +65,19 @@
     "webhook": {
       "invalidSignature": "Invalid webhook signature",
       "internalError": "Internal server error"
+    },
+    "taxCategory": {
+      "nameRequired": "Category name is required",
+      "notFound": "Tax category not found"
     }
   },
   "auth": {
     "loggedOut": "Logged out successfully",
-    "accountDeletionScheduled": "Account scheduled for deletion. Data will be permanently removed after 30 days."
+    "accountDeletionScheduled": "Account scheduled for deletion. Data will be permanently removed after 30 days.",
+    "resetLinkSent": "If that email address is registered, a reset link has been sent. Please check your inbox.",
+    "passwordResetSuccess": "Password has been reset successfully",
+    "emailVerified": "Your email address has been verified",
+    "verificationSent": "Verification email sent. Please check your inbox."
   },
   "project": {
     "deleted": "Project deleted"
@@ -68,5 +87,10 @@
   },
   "expense": {
     "deleted": "Expense deleted"
+  },
+  "taxCategory": {
+    "created": "Tax category created",
+    "updated": "Tax category updated",
+    "deleted": "Tax category deleted"
   }
 }

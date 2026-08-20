@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,6 +34,8 @@ class SettingsScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final premium = context.watch<PremiumProvider>();
     final localeProvider = context.watch<LocaleProvider>();
+    // 监听同步状态：进行中时 Cloud Sync 行显示 loading，避免用户误以为没点到
+    final sync = context.watch<SyncService>();
 
     return Scaffold(
       appBar: AppBar(title: Text(AppLocalizations.t('settings'))),
@@ -46,6 +47,8 @@ class SettingsScreen extends StatelessWidget {
             title: Text(auth.isLoggedIn ? (auth.user?.userName.isNotEmpty == true ? auth.user!.userName : 'User') : AppLocalizations.t('notSignedIn')),
             subtitle: Text(auth.user?.userEmail ?? AppLocalizations.t('signInToSyncHint')),
           ),
+          // 邮箱验证横幅（非阻断）：仅在 SMTP 可用且未验证时显示
+          if (auth.showEmailVerificationBanner) _buildVerifyEmailBanner(context, auth),
           const Divider(),
           // 偏好设置
           _SectionHeader(AppLocalizations.t('preferences')),
@@ -90,11 +93,22 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.cloud_sync_outlined),
             title: Text(AppLocalizations.t('cloudSync')),
-            subtitle: Text(premium.isAnnual && auth.isLoggedIn ? AppLocalizations.t('enabled') : AppLocalizations.t('requiresAnnualAccount')),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: premium.isAnnual && auth.isLoggedIn
-                ? () => _manualSync(context)
-                : () => Navigator.pushNamed(context, '/premium'),
+            subtitle: Text(
+              sync.syncing
+                  ? AppLocalizations.t('syncingInProgress')
+                  : (premium.isAnnual && auth.isLoggedIn
+                      ? AppLocalizations.t('enabled')
+                      : AppLocalizations.t('requiresAnnualAccount')),
+            ),
+            trailing: sync.syncing
+                ? const SizedBox(
+                    width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.chevron_right),
+            onTap: sync.syncing
+                ? null
+                : (premium.isAnnual && auth.isLoggedIn
+                    ? () => _manualSync(context)
+                    : () => Navigator.pushNamed(context, '/premium')),
           ),
           const Divider(),
           // 订阅管理
@@ -114,7 +128,7 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(AppLocalizations.t('version')),
-            subtitle: Text('${AppConfig.appVersion} (${AppConfig.environment})'),
+            subtitle: const Text('${AppConfig.appVersion} (${AppConfig.environment})'),
           ),
           ListTile(
             leading: const Icon(Icons.help_outline),
@@ -152,9 +166,9 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 24),
-          Center(
+          const Center(
             child: Text('Freelance Hub v${AppConfig.appVersion}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textDisabled)),
+                style: TextStyle(fontSize: 12, color: AppTheme.textDisabled)),
           ),
           const SizedBox(height: 16),
         ],
@@ -169,16 +183,60 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  /// 邮箱验证横幅：重发按钮，429（60s 防轰炸）时提示稍后再试。
+  Widget _buildVerifyEmailBanner(BuildContext context, AuthProvider auth) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.mark_email_unread_outlined, color: AppTheme.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              AppLocalizations.t('verifyEmailHint'),
+              style: const TextStyle(fontSize: 12, height: 1.4),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                await auth.resendEmailVerification();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.t('verificationSent'))),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.t('errors.rateLimited'))),
+                  );
+                }
+              }
+            },
+            child: Text(AppLocalizations.t('resend'), style: const TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _confirmDeleteAccount(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    final password = await showDialog<String>(
       context: context,
       builder: (ctx) => const _DeleteAccountDialog(),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (password == null || !context.mounted) return;
 
     final auth = context.read<AuthProvider>();
     try {
-      await auth.deleteAccount();
+      await auth.deleteAccount(password: password);
       if (context.mounted) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
       }
@@ -193,7 +251,10 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _exportData(BuildContext context) async {
     try {
-      final json = DataExport.toJsonString();
+      final json = DataExport.toJsonString(
+        // Free 版导出仅当月数据（与付费墙承诺一致）
+        isFree: context.read<PremiumProvider>().isFree,
+      );
       final filename = 'freelance_hub_export_${DateTime.now().millisecondsSinceEpoch}.json';
       // 修复 M1:此前用 Printing.sharePdf 分享 JSON,语义错配(PDF 通道分享文本)
       // 改用 share_plus 的 Share.share 分享 JSON 文本,subject 提供文件名建议
@@ -384,20 +445,27 @@ class _DeleteAccountDialog extends StatefulWidget {
 
 class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _canConfirm = false;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      final match = _controller.text.trim() == 'DELETE';
-      if (match != _canConfirm) setState(() => _canConfirm = match);
-    });
+    _controller.addListener(_validate);
+    _passwordController.addListener(_validate);
+  }
+
+  // 双重确认：输入 DELETE + 输入账号密码（后端会校验密码，
+  // 防止持有效 token 的盗用设备直接删除账号）
+  void _validate() {
+    final match = _controller.text.trim() == 'DELETE' && _passwordController.text.isNotEmpty;
+    if (match != _canConfirm) setState(() => _canConfirm = match);
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -443,16 +511,29 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
               ),
               autocorrect: false,
             ),
+            const SizedBox(height: 16),
+            Text(AppLocalizations.t('deleteAccountPasswordLabel')),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: InputDecoration(
+                labelText: AppLocalizations.t('password'),
+                border: const OutlineInputBorder(),
+              ),
+            ),
           ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false),
+          onPressed: () => Navigator.pop(context, null),
           child: Text(AppLocalizations.t('cancel')),
         ),
         TextButton(
-          onPressed: _canConfirm ? () => Navigator.pop(context, true) : null,
+          onPressed: _canConfirm ? () => Navigator.pop(context, _passwordController.text) : null,
           style: TextButton.styleFrom(foregroundColor: AppTheme.danger),
           child: Text(AppLocalizations.t('deleteAccount')),
         ),

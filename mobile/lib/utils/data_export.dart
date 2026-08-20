@@ -3,23 +3,26 @@ import '../models/client_project.dart';
 import '../models/time_log.dart';
 import '../models/expense_log.dart';
 import '../services/hive_service.dart';
+import 'free_tier_gate.dart';
 
 /// 数据导出：把本地项目/工时/开支序列化为 JSON，供设置页导出分享。
 class DataExport {
   /// 收集全部未删除数据为 Map 结构。
-  static Map<String, dynamic> collect() {
+  static Map<String, dynamic> collect({bool isFree = false}) {
     final projects = HiveService.projectBoxInstance.values
         .where((p) => !p.isDeleted)
         .map(_project)
         .toList();
-    final timeLogs = HiveService.timeLogBoxInstance.values
-        .where((t) => !t.isDeleted)
-        .map(_timeLog)
-        .toList();
-    final expenses = HiveService.expenseBoxInstance.values
-        .where((e) => !e.isDeleted)
-        .map(_expense)
-        .toList();
+    final timeLogs = FreeTierGate.visible(
+      HiveService.timeLogBoxInstance.values.where((t) => !t.isDeleted).toList(),
+      isFree,
+      (t) => t.startTime,
+    ).map(_timeLog).toList();
+    final expenses = FreeTierGate.visible(
+      HiveService.expenseBoxInstance.values.where((e) => !e.isDeleted).toList(),
+      isFree,
+      (e) => e.expenseDate,
+    ).map(_expense).toList();
 
     return {
       'exportedAt': DateTime.now().toIso8601String(),
@@ -31,8 +34,8 @@ class DataExport {
   }
 
   /// 生成带缩进的可读 JSON 字符串。
-  static String toJsonString() =>
-      const JsonEncoder.withIndent('  ').convert(collect());
+  static String toJsonString({bool isFree = false}) =>
+      const JsonEncoder.withIndent('  ').convert(collect(isFree: isFree));
 
   static Map<String, dynamic> _project(ClientProject p) => {
         'projectId': p.projectId,

@@ -4,8 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../models/expense_log.dart';
+import '../models/tax_category.dart';
 import '../providers/expense_provider.dart';
+import '../providers/premium_provider.dart';
 import '../providers/project_provider.dart';
 import '../services/hive_service.dart';
 import '../config/app_theme.dart';
@@ -63,7 +66,35 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   Widget build(BuildContext context) {
     final categories = HiveService.taxCategoryBoxInstance.values.toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    final projects = context.watch<ProjectProvider>().activeProjects;
+    final projectProvider = context.watch<ProjectProvider>();
+    final projects = projectProvider.activeProjects;
+    final isAnnual = context.watch<PremiumProvider>().isAnnual;
+
+    // 崩溃防御：编辑记录的类目可能来自已被删除的自定义类目 —— 下拉框的
+    // initialValue 必须能在 items 中找到，否则断言崩溃/静默丢值。
+    final categoryNames = categories.map((c) => c.name).toSet();
+    final categoryItems = <DropdownMenuItem<String>>[
+      ...categories.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))),
+      if (!categoryNames.contains(_selectedCategory))
+        DropdownMenuItem(value: _selectedCategory, child: Text(_selectedCategory)),
+    ];
+
+    // 同理：编辑关联了已归档项目的开支时，activeProjects 不含该项目，
+    // 注入当前值的 fallback 项保持链接可见且可保留。
+    final projectItems = <DropdownMenuItem<String?>>[
+      DropdownMenuItem<String?>(value: null, child: Text(AppLocalizations.t('none'))),
+      ...projects.map((p) => DropdownMenuItem<String?>(value: p.projectId, child: Text(p.projectName))),
+    ];
+    if (_selectedProjectId != null &&
+        !projects.any((p) => p.projectId == _selectedProjectId)) {
+      final linked = projectProvider.getProjectById(_selectedProjectId!);
+      projectItems.add(
+        DropdownMenuItem<String?>(
+          value: _selectedProjectId,
+          child: Text(linked?.projectName ?? AppLocalizations.t('none')),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? AppLocalizations.t('editExpense') : AppLocalizations.t('addExpenseTitle'))),
@@ -96,12 +127,29 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: InputDecoration(labelText: AppLocalizations.t('category')),
-              items: categories
-                  .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
-                  .toList(),
+              items: [
+                ...categoryItems,
+                // 自定义类目入口（Annual 专属卖点）：选中即弹创建面板
+                if (isAnnual)
+                  DropdownMenuItem(
+                    value: '__add_category__',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.add, size: 18, color: AppTheme.primary),
+                        const SizedBox(width: 6),
+                        Text(AppLocalizations.t('addCategory'),
+                            style: const TextStyle(color: AppTheme.primary)),
+                      ],
+                    ),
+                  ),
+              ],
               onChanged: (v) {
+                if (v == '__add_category__') {
+                  _showAddCategorySheet();
+                  return;
+                }
                 setState(() {
                   _selectedCategory = v!;
                   final cat = categories.firstWhere((c) => c.name == v);
@@ -134,20 +182,9 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String?>(
-              value: _selectedProjectId,
+              initialValue: _selectedProjectId,
               decoration: InputDecoration(labelText: AppLocalizations.t('linkedProjectOptional')),
-              items: [
-                DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text(AppLocalizations.t('none')),
-                ),
-                ...projects.map(
-                  (p) => DropdownMenuItem<String?>(
-                    value: p.projectId,
-                    child: Text(p.projectName),
-                  ),
-                ),
-              ],
+              items: projectItems,
               onChanged: (v) => setState(() => _selectedProjectId = v),
             ),
             const SizedBox(height: 8),
@@ -270,6 +307,83 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         );
       }
     }
+  }
+
+  /// 新建自定义税务类目（Annual 专属）：本地 Hive 即时生效，选中并沿用其
+  /// 默认抵扣设置。类目以名称关联记录（与默认类目一致），删除不影响历史记录。
+  void _showAddCategorySheet() {
+    final nameController = TextEditingController();
+    bool deductibleByDefault = true;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            16, 16, 16, 16 + MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(AppLocalizations.t('addCategory'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                autofocus: true,
+                maxLength: 50,
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.t('categoryName'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(AppLocalizations.t('defaultDeductible')),
+                value: deductibleByDefault,
+                onChanged: (v) => setSheetState(() => deductibleByDefault = v),
+              ),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () async {
+                  final name = nameController.text.trim();
+                  if (name.isEmpty) return;
+                  final exists = HiveService.taxCategoryBoxInstance.values
+                      .any((c) => c.name.toLowerCase() == name.toLowerCase());
+                  if (exists) {
+                    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(AppLocalizations.t('categoryAlreadyExists'))),
+                      );
+                    }
+                    return;
+                  }
+                  final category = TaxCategory(
+                    categoryId: const Uuid().v4(),
+                    name: name,
+                    isDefault: false,
+                    isTaxDeductibleDefault: deductibleByDefault,
+                    sortOrder: 100 + HiveService.taxCategoryBoxInstance.length,
+                    createdAt: DateTime.now().millisecondsSinceEpoch,
+                  );
+                  await HiveService.taxCategoryBoxInstance.put(category.categoryId, category);
+                  if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                  if (mounted) {
+                    setState(() {
+                      _selectedCategory = name;
+                      _isTaxDeductible = deductibleByDefault;
+                    });
+                  }
+                },
+                child: Text(AppLocalizations.t('saveCategory')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveExpense() async {

@@ -6,8 +6,10 @@ import '../models/client_project.dart';
 import '../providers/project_provider.dart';
 import '../providers/timelog_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
+import '../utils/free_tier_gate.dart';
 
 class ProjectDetailScreen extends StatelessWidget {
   final String projectId;
@@ -27,10 +29,20 @@ class ProjectDetailScreen extends StatelessWidget {
           );
         }
 
-        final logs = timelog.timeLogs.where((t) => t.projectId == projectId).toList();
-        final expenses = expense.expenses.where((e) => e.projectId == projectId).toList();
+        // Free 版仅当月（付费墙承诺）：项目详情内的历史记录同步受限
+        final isFree = context.watch<PremiumProvider>().isFree;
+        final logs = FreeTierGate.visible(
+          timelog.timeLogs.where((t) => t.projectId == projectId).toList(),
+          isFree,
+          (t) => t.startTime,
+        );
+        final expenses = FreeTierGate.visible(
+          expense.expenses.where((e) => e.projectId == projectId).toList(),
+          isFree,
+          (e) => e.expenseDate,
+        );
         final totalHours = logs.fold<double>(0, (s, t) => s + t.duration);
-        final totalIncome = logs.fold<double>(0, (s, t) => s + t.billableAmount);
+        final totalIncome = logs.fold<double>(0, (s, t) => s + (t.isBillable ? t.billableAmount : 0));
         final totalExpenses = expenses.fold<double>(0, (s, e) => s + e.amount);
 
         return Scaffold(
@@ -41,7 +53,11 @@ class ProjectDetailScreen extends StatelessWidget {
                 onSelected: (value) => _handleMenuAction(context, value, project, projectProvider),
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'edit', child: Text(AppLocalizations.t('edit'))),
-                  PopupMenuItem(value: 'archive', child: Text(AppLocalizations.t('archive'))),
+                  // 归档项目显示「恢复」，未归档显示「归档」——兑现归档弹窗的可恢复承诺
+                  if (project.status == 'archived')
+                    PopupMenuItem(value: 'restore', child: Text(AppLocalizations.t('restoreProject')))
+                  else
+                    PopupMenuItem(value: 'archive', child: Text(AppLocalizations.t('archive'))),
                   PopupMenuItem(value: 'delete', child: Text(AppLocalizations.t('delete'))),
                 ],
               ),
@@ -91,7 +107,7 @@ class ProjectDetailScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               // 工时记录
-              Text(AppLocalizations.t('timeLogs'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(AppLocalizations.t('timeLogs'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               if (logs.isEmpty)
                 Card(child: ListTile(title: Text(AppLocalizations.t('noTimeLogs')), subtitle: Text(AppLocalizations.t('startTimerForProjectHint'))))
@@ -111,7 +127,7 @@ class ProjectDetailScreen extends StatelessWidget {
                 }),
               const SizedBox(height: 16),
               // 开支记录
-              Text(AppLocalizations.t('expenses'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Text(AppLocalizations.t('expenses'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               if (expenses.isEmpty)
                 Card(child: ListTile(title: Text(AppLocalizations.t('noExpenses'))))
@@ -145,16 +161,80 @@ class ProjectDetailScreen extends StatelessWidget {
         );
         break;
       case 'archive':
-        provider.archiveProject(project.projectId);
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.t('projectArchived'))));
+        _confirmArchive(context, project, provider);
+        break;
+      case 'restore':
+        provider.restoreProject(project.projectId);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.t('projectRestored'))),
+        );
         break;
       case 'delete':
-        provider.deleteProject(project.projectId);
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.t('projectDeleted'))));
+        _confirmDelete(context, project, provider);
         break;
     }
+  }
+
+  /// 归档确认：归档是可逆操作（仅隐藏），但仍需二次确认避免误触。
+  /// 对话框文案明确告知「数据保留 + 可恢复」，降低用户顾虑。
+  void _confirmArchive(BuildContext context, ClientProject project, ProjectProvider provider) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalizations.t('confirmArchive')),
+        content: Text(AppLocalizations.t('archiveProjectHint')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(AppLocalizations.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              provider.archiveProject(project.projectId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(AppLocalizations.t('projectArchived'))),
+              );
+              Navigator.of(context).maybePop();
+            },
+            child: Text(AppLocalizations.t('archive')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 删除确认：删除是软删除本机数据，但用户视角是不可逆。
+  /// 用 danger 主题按钮 + 显式风险文案（影响工时/开支/云端副本保留说明）。
+  void _confirmDelete(BuildContext context, ClientProject project, ProjectProvider provider) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(AppLocalizations.t('confirmDelete')),
+        content: Text(AppLocalizations.t('deleteProjectHint')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(AppLocalizations.t('cancel')),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              provider.deleteProject(project.projectId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(AppLocalizations.t('projectDeleted'))),
+              );
+              Navigator.of(context).pop();
+            },
+            child: Text(AppLocalizations.t('delete')),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _infoChip(String label, String value) {
@@ -240,7 +320,7 @@ class _ProjectEditSheetState extends State<_ProjectEditSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(AppLocalizations.t('editProject'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(AppLocalizations.t('editProject'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextFormField(
               controller: _clientNameController,

@@ -12,6 +12,11 @@
       "invalidToken": "登录已过期或令牌无效，请重新登录",
       "emailExists": "该邮箱已注册",
       "invalidCredentials": "邮箱或密码错误",
+      "passwordRequired": "需要输入账号密码以确认此操作",
+      "passwordMismatch": "密码错误",
+      "resetTokenInvalid": "重置链接无效或已过期，请重新申请。",
+      "verificationTokenInvalid": "验证链接无效或已被使用。",
+      "alreadyVerified": "该邮箱已通过验证",
       "refreshTokenRequired": "需要刷新令牌",
       "refreshTokenInvalid": "刷新令牌已过期或无效，请重新登录",
       "refreshTokenExpired": "刷新令牌已过期，请重新登录"
@@ -20,7 +25,12 @@
       "emailRequired": "请输入有效的邮箱地址",
       "passwordInvalid": "密码至少 8 位，且需包含字母和数字",
       "userNameTooLong": "用户名不能超过 100 个字符",
-      "emailPasswordRequired": "请输入邮箱和密码"
+      "emailPasswordRequired": "请输入邮箱和密码",
+      "invalidTimezone": "时区标识无效",
+      "invalidCurrency": "货币代码无效",
+      "invalidInput": "输入数据无效",
+      "payloadTooLarge": "请求体超过 10MB 限制",
+      "malformedJson": "请求体不是合法的 JSON"
     },
     "project": {
       "notFound": "项目不存在"
@@ -45,7 +55,8 @@
     "sync": {
       "projectsArrayRequired": "projects 必须为数组",
       "timelogsArrayRequired": "timeLogs 必须为数组",
-      "expensesArrayRequired": "expenses 必须为数组"
+      "expensesArrayRequired": "expenses 必须为数组",
+      "batchTooLarge": "单次同步记录数超出上限（最多 500 条）"
     },
     "premium": {
       "requiresMonthly": "该功能需要月度或年度订阅",
@@ -58,7 +69,11 @@
   },
   "auth": {
     "loggedOut": "已成功退出登录",
-    "accountDeletionScheduled": "账号已标记删除，数据将在 30 天后永久清除"
+    "accountDeletionScheduled": "账号已标记删除，数据将在 30 天后永久清除",
+    "resetLinkSent": "如果该邮箱已注册，重置链接已发送，请查收邮件。",
+    "passwordResetSuccess": "密码重置成功",
+    "emailVerified": "邮箱验证成功",
+    "verificationSent": "验证邮件已发送，请查收。"
   },
   "project": {
     "deleted": "项目已删除"
@@ -68,5 +83,10 @@
   },
   "expense": {
     "deleted": "开支记录已删除"
+  },
+  "taxCategory": {
+    "created": "税务分类已创建",
+    "updated": "税务分类已更新",
+    "deleted": "税务分类已删除"
   }
 }

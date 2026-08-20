@@ -1,9 +1,20 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../config/app_config.dart';
+import '../l10n/app_localizations.dart';
 import '../services/notification_service.dart';
 
 enum PremiumType { free, monthly, annual }
+
+/// 用户主动取消购买（关闭 Google Play 结算弹窗）时抛出。
+/// UI 层应友好提示而非当作错误展示。
+class PurchaseCanceledException implements Exception {
+  final String message;
+  PurchaseCanceledException([this.message = 'Purchase was canceled by the user.']);
+  @override
+  String toString() => message;
+}
 
 class PremiumProvider extends ChangeNotifier {
   static const _monthlyEntitlement = 'monthly_premium';
@@ -52,12 +63,19 @@ class PremiumProvider extends ChangeNotifier {
       return;
     }
 
-    final configuration = PurchasesConfiguration(AppConfig.revenueCatApiKey)
-      ..appUserID = appUserId;
-    await Purchases.configure(configuration);
-    Purchases.addCustomerInfoUpdateListener(_handleCustomerInfoUpdate);
-    _purchasesConfigured = true;
-    await _refreshCustomerInfo();
+    try {
+      final configuration = PurchasesConfiguration(AppConfig.revenueCatApiKey)
+        ..appUserID = appUserId;
+      await Purchases.configure(configuration);
+      Purchases.addCustomerInfoUpdateListener(_handleCustomerInfoUpdate);
+      _purchasesConfigured = true;
+      await _refreshCustomerInfo();
+    } catch (_) {
+      // 配置/网络失败时允许下次重试（如回到前台再 initialize），
+      // 否则本会话内购买/恢复永远报 "not configured"。
+      _isInitialized = false;
+      rethrow;
+    }
     notifyListeners();
   }
 
@@ -84,14 +102,40 @@ class PremiumProvider extends ChangeNotifier {
 
   Future<void> purchaseMonthly() async {
     final package = await _packageFor((offering) => offering.monthly);
-    final info = await Purchases.purchasePackage(package);
-    _handleCustomerInfoUpdate(info);
+    try {
+      final info = await Purchases.purchasePackage(package);
+      _handleCustomerInfoUpdate(info);
+    } on PlatformException catch (e) {
+      throw _wrapPurchaseError(e);
+    }
   }
 
   Future<void> purchaseAnnual() async {
     final package = await _packageFor((offering) => offering.annual);
-    final info = await Purchases.purchasePackage(package);
-    _handleCustomerInfoUpdate(info);
+    try {
+      final info = await Purchases.purchasePackage(package);
+      _handleCustomerInfoUpdate(info);
+    } on PlatformException catch (e) {
+      throw _wrapPurchaseError(e);
+    }
+  }
+
+  /// 将 RevenueCat 抛出的 [PlatformException] 转换为业务语义异常：
+  /// - 用户主动取消 → [PurchaseCanceledException]（UI 应静默/友好提示）
+  /// - 其他错误原样向上抛，由调用处按失败处理。
+  ///
+  /// 注意：purchases_flutter 的 PlatformException.code 是**数字字符串**
+  /// （PurchasesErrorHelper.getErrorCode 内部是 int.parse(e.code)），
+  /// 不能与 'PURCHASE_CANCELLED' 之类的常量字符串比较。
+  Exception _wrapPurchaseError(PlatformException e) {
+    try {
+      if (PurchasesErrorHelper.getErrorCode(e) == PurchasesErrorCode.purchaseCancelledError) {
+        return PurchaseCanceledException();
+      }
+    } catch (_) {
+      // code 非数字（通道级错误）时 getErrorCode 抛 FormatException，按普通错误处理
+    }
+    return Exception(e.message ?? e.code);
   }
 
   Future<void> restorePurchases() async {
@@ -150,6 +194,32 @@ class PremiumProvider extends ChangeNotifier {
     return package;
   }
 
+  /// 获取商店真实产品信息（本地货币价格 + 是否有免费试用 IntroductoryOffer）。
+  /// 订阅页必须展示商店价格：硬编码 $4.79 对 EUR/VAT 地区用户是错误标价，
+  /// 属 Google Play「误导性声明」风险；试用期标注也必须以商店配置为准。
+  /// 未配置 RC 或 offerings 拉取失败时返回 null（UI 回退到参考价并提示）。
+  Future<({String? monthlyPrice, String? annualPrice, bool monthlyHasTrial, bool annualHasTrial})>
+      fetchStoreProducts() async {
+    if (!_purchasesConfigured) {
+      return (monthlyPrice: null, annualPrice: null, monthlyHasTrial: false, annualHasTrial: false);
+    }
+    try {
+      final offering = (await Purchases.getOfferings()).current;
+      final monthly = offering?.monthly?.storeProduct;
+      final annual = offering?.annual?.storeProduct;
+      bool hasTrial(StoreProduct? p) =>
+          p?.introductoryPrice != null && p!.introductoryPrice!.price == 0;
+      return (
+        monthlyPrice: monthly?.priceString,
+        annualPrice: annual?.priceString,
+        monthlyHasTrial: hasTrial(monthly),
+        annualHasTrial: hasTrial(annual),
+      );
+    } catch (_) {
+      return (monthlyPrice: null, annualPrice: null, monthlyHasTrial: false, annualHasTrial: false);
+    }
+  }
+
   void _requirePurchasesConfiguration() {
     if (!_purchasesConfigured) {
       throw StateError('Purchases are not configured in this build.');
@@ -200,10 +270,11 @@ class PremiumProvider extends ChangeNotifier {
     const threeDays = 3 * 24 * 60 * 60 * 1000;
     final now = DateTime.now().millisecondsSinceEpoch;
     if (exp - now <= threeDays && exp > now) {
+      // 订阅到期提醒 ID 与计时器晚间提醒（1001）错开，避免互相覆盖
       await NotificationService.show(
-        id: 1001,
-        title: 'Subscription expiring soon',
-        body: 'Your Freelance Hub subscription expires soon. Renew to keep Premium features.',
+        id: 1002,
+        title: AppLocalizations.t('notification.subscriptionExpiringTitle'),
+        body: AppLocalizations.t('notification.subscriptionExpiringBody'),
       );
     }
   }

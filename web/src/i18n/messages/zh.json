@@ -1,4 +1,7 @@
 {
+  "app": {
+    "title": "Freelance Hub - 工时·开支·税务追踪"
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",
@@ -11,7 +14,14 @@
     "language": "语言",
     "english": "English",
     "chinese": "中文",
-    "user": "用户"
+    "user": "用户",
+    "deleteAccount": "删除账号",
+    "deleteAccountTitle": "删除账号",
+    "deleteAccountConfirm": "账号将在 30 天宽限期后被永久删除，您的所有数据（项目、工时、开支）都会被清除。此操作不可撤销。请输入 DELETE 以确认。",
+    "deleteAccountPlaceholder": "输入 DELETE 确认",
+    "deleteAccountPasswordMsg": "请输入账号密码以确认删除。",
+    "deleteAccountSuccess": "账号已标记删除",
+    "deleteAccountFailed": "删除账号失败"
   },
   "nav": {
     "dashboard": "年度仪表盘",
@@ -31,7 +41,14 @@
     "annualOnly": "Web 仪表盘仅限年度合同套餐使用。",
     "annualExpired": "你的年度订阅已过期,请续订后访问 Web 仪表盘。",
     "success": "登录成功",
-    "failed": "登录失败"
+    "failed": "登录失败",
+    "privacyPolicy": "隐私政策",
+    "forgotPassword": "忘记密码？"
+  },
+  "privacy": {
+    "title": "隐私政策",
+    "lastUpdated": "最后更新",
+    "backToLogin": "返回登录"
   },
   "dashboard": {
     "annualIncome": "年度收入",
@@ -43,7 +60,36 @@
     "monthlyExpenses": "月度开支",
     "expenseByCategory": "开支分类",
     "incomeByProject": "项目收入",
-    "loadFailed": "加载报表失败"
+    "loadFailed": "加载报表失败",
+    "tabs": {
+      "charts": "图表",
+      "timeDetail": "工时明细",
+      "expenseDetail": "开支明细"
+    },
+    "avgRate": "平均时薪",
+    "nonDeductible": "不可抵扣",
+    "percentage": "占比",
+    "noData": "暂无数据",
+    "timeDetail": {
+      "project": "项目",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "duration": "时长",
+      "amount": "金额",
+      "tag": "标签",
+      "note": "备注"
+    },
+    "expenseDetail": {
+      "project": "项目",
+      "category": "分类",
+      "date": "日期",
+      "amount": "金额",
+      "taxDeductible": "可抵扣",
+      "merchant": "商家",
+      "note": "备注",
+      "yes": "是",
+      "no": "否"
+    }
   },
   "report": {
     "annualTitle": "年度报税汇总 — {year}",
@@ -52,16 +98,26 @@
     "totalExpenses": "总开支",
     "taxDeductible": "可抵扣税",
     "netIncome": "净收入",
-    "estSeTax": "预计自雇税 (15.3%)",
+    "estSeTax": "预计自雇税",
     "quarterlyBreakdown": "季度明细",
     "quarter": "季度",
     "hours": "工时",
     "income": "收入",
     "expenses": "开支",
     "deductible": "可抵扣",
+    "monthlyTrend": "月度收入与开支对比",
+    "expenseByCategory": "开支分类",
+    "exportPdf": "导出 PDF",
+    "exported": "报表已导出",
+    "exportFailed": "导出失败",
     "disclaimerStrong": "免责声明:",
     "disclaimerBody": "本报表仅用于记录目的,不构成税务建议。请咨询认证税务专业人士获取申报建议。",
-    "loadFailed": "加载年度报表失败"
+    "loadFailed": "加载年度报表失败",
+    "perQuarter": "每季度建议预缴 (1040-ES)",
+    "seTax": "自雇税",
+    "fedTax": "联邦个税",
+    "annualTotal": "年度合计",
+    "quarterlyHint": "仅为估算：自雇税 + 联邦个税（单身申报、标准扣除）按四季分摊。IRS 截止日：4/15、6/15、9/15、次年 1/15。不构成税务建议。"
   },
   "export": {
     "title": "导出报表",
@@ -72,15 +128,36 @@
     "month": "月份",
     "exportPdf": "导出 PDF",
     "exportCsv": "导出 CSV",
+    "csvAnnualOnly": "CSV 导出仅支持年度报表",
     "pdfExported": "报表已导出",
     "csvExported": "CSV 已导出",
     "pdfExportFailed": "导出失败",
     "csvExportFailed": "CSV 导出失败",
+    "historyTitle": "导出历史",
+    "clearHistory": "清空历史",
+    "noHistory": "暂无导出记录",
+    "confirmClear": "确认清空所有导出历史？此操作不可撤销。",
+    "historyCleared": "历史已清空",
+    "reExport": "重新导出",
+    "reExported": "重新导出成功",
+    "colFormat": "格式",
+    "colActions": "操作",
+    "colRange": "时间范围",
+    "colFile": "文件名",
+    "colExportedAt": "导出时间",
     "months": {
-      "1": "一月", "2": "二月", "3": "三月",
-      "4": "四月", "5": "五月", "6": "六月",
-      "7": "七月", "8": "八月", "9": "九月",
-      "10": "十月", "11": "十一月", "12": "十二月"
+      "1": "一月",
+      "2": "二月",
+      "3": "三月",
+      "4": "四月",
+      "5": "五月",
+      "6": "六月",
+      "7": "七月",
+      "8": "八月",
+      "9": "九月",
+      "10": "十月",
+      "11": "十一月",
+      "12": "十二月"
     }
   },
   "errors": {
@@ -90,5 +167,35 @@
     "notFound": "资源不存在",
     "serverError": "服务器错误,请稍后重试",
     "rateLimited": "请求过于频繁,请稍后再试"
+  },
+  "forgot": {
+    "title": "重置密码",
+    "subtitle": "输入账号邮箱，我们将向你发送重置链接。",
+    "send": "发送重置链接",
+    "sentTitle": "请查收邮件",
+    "sentBody": "如果该邮箱已注册，重置链接已发送。链接 1 小时内有效。",
+    "backToLogin": "返回登录",
+    "failed": "重置邮件发送失败，请稍后重试。"
+  },
+  "reset": {
+    "title": "设置新密码",
+    "subtitle": "为你的账号设置新密码。",
+    "newPasswordLabel": "新密码",
+    "confirmPasswordLabel": "确认密码",
+    "passwordRule": "至少 8 位，包含字母和数字",
+    "passwordMismatch": "两次输入的密码不一致",
+    "submit": "重置密码",
+    "doneTitle": "密码已更新",
+    "doneBody": "密码重置成功，本设备已自动登录。",
+    "tokenMissing": "链接无效或不完整，请重新申请。",
+    "failed": "密码重置失败，链接可能已过期。"
+  },
+  "verify": {
+    "title": "邮箱验证",
+    "loadingTitle": "验证中...",
+    "okTitle": "验证成功",
+    "okBody": "感谢！你的邮箱已完成验证。",
+    "failedTitle": "验证失败",
+    "failedBody": "链接无效或已被使用。"
   }
 }

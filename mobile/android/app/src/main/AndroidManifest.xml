@@ -1,15 +1,41 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ===== 必需权限（实际使用中） ===== -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- Android 13+ (API 33) 通知权限：flutter_local_notifications 显示订阅/计时器通知 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- 拍照上传开支收据（expense_form_screen 的 ImageSource.camera） -->
+    <uses-permission android:name="android.permission.CAMERA"/>
 
+    <!-- ===== 相机为可选功能：required=false 确保无相机设备（如平板）仍可在 Google Play 下载 ===== -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
+
+    <!--
+      workmanager 后台任务（m5 已落地·务实方案）：
+      workmanager_android 插件自动合并 FOREGROUND_SERVICE + FOREGROUND_SERVICE_SHORT_SERVICE
+      权限及 SystemForegroundService（shortService 类型）声明。
+      我们注册的是普通 PeriodicWorkRequest（后台同步 / 计时提醒），
+      不会触发 foreground service，无需 FOREGROUND_SERVICE_SPECIAL_USE，
+      Google Play 审核零风险。
+      计时器进程保活仍依赖 flutter_local_notifications 的 ongoing 通知（已实现），
+      后台任务仅负责增量同步和晚间提醒，不维持持续运行。
+    -->
+
+    <!--
+      安全加固：
+      - allowBackup="false" 阻止 adb backup / 系统备份导出 Hive 加密数据库与密钥，
+        避免攻击者拿到完整客户账本（财务类 App 必须关闭）。
+      - dataExtractionRules / fullBackupContent 同步关闭 Android 12+ 的备份通道。
+    -->
     <application
         android:label="Freelance Hub"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"

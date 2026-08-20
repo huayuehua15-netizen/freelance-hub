@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/timelog_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/premium_provider.dart';
 import '../providers/project_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
+import '../utils/free_tier_gate.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -24,9 +26,13 @@ class DashboardScreen extends StatelessWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await context.read<TimelogProvider>().loadTimeLogs();
-          await context.read<ExpenseProvider>().loadExpenses();
-          await context.read<ProjectProvider>().loadProjects();
+          // 先取 Provider 引用再 await，避免 async gap 后使用 BuildContext
+          final timelog = context.read<TimelogProvider>();
+          final expense = context.read<ExpenseProvider>();
+          final project = context.read<ProjectProvider>();
+          await timelog.loadTimeLogs();
+          await expense.loadExpenses();
+          await project.loadProjects();
         },
         child: Consumer3<TimelogProvider, ExpenseProvider, ProjectProvider>(
           builder: (context, timelog, expense, project, _) {
@@ -34,7 +40,7 @@ class DashboardScreen extends StatelessWidget {
             final monthStart = DateTime(now.year, now.month, 1).millisecondsSinceEpoch;
             final monthLogs = timelog.timeLogs.where((t) => t.startTime >= monthStart).toList();
             final totalHours = monthLogs.fold<double>(0, (s, t) => s + t.duration);
-            final totalIncome = monthLogs.fold<double>(0, (s, t) => s + t.billableAmount);
+            final totalIncome = monthLogs.fold<double>(0, (s, t) => s + (t.isBillable ? t.billableAmount : 0));
 
             return ListView(
               padding: const EdgeInsets.all(16),
@@ -61,7 +67,7 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.t('thisMonth'), style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+            Text(AppLocalizations.t('thisMonth'), style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -127,7 +133,9 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildRecentTimeLogs(BuildContext context, TimelogProvider timelog, ProjectProvider project) {
-    final recent = timelog.timeLogs.take(5).toList();
+    // Free 版仅当月（付费墙承诺）：最近列表同步受限
+    final isFree = context.watch<PremiumProvider>().isFree;
+    final recent = FreeTierGate.visible(timelog.timeLogs, isFree, (t) => t.startTime).take(5).toList();
 
     return Card(
       child: Padding(
@@ -138,7 +146,7 @@ class DashboardScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(AppLocalizations.t('recentTimeLogs'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(AppLocalizations.t('recentTimeLogs'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/monthly-report'),
                   child: Text(AppLocalizations.t('viewAll')),
@@ -164,7 +172,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   onTap: () => Navigator.pushNamed(context, '/time-log-edit', arguments: t),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),
@@ -172,7 +180,8 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildRecentExpenses(BuildContext context, ExpenseProvider expense) {
-    final recent = expense.expenses.take(5).toList();
+    final isFree = context.watch<PremiumProvider>().isFree;
+    final recent = FreeTierGate.visible(expense.expenses, isFree, (e) => e.expenseDate).take(5).toList();
 
     return Card(
       child: Padding(
@@ -183,7 +192,7 @@ class DashboardScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(AppLocalizations.t('recentExpenses'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(AppLocalizations.t('recentExpenses'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/expenses'),
                   child: Text(AppLocalizations.t('viewAll')),
@@ -205,7 +214,7 @@ class DashboardScreen extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 );
-              }).toList(),
+              }),
           ],
         ),
       ),

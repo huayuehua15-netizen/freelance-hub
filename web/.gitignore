@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vite dev 临时文件
+vite.config.js.timestamp-*
