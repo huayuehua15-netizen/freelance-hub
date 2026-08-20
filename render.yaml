@@ -1,0 +1,38 @@
+# Render Blueprint —— Freelance Hub 后端一键部署
+# 用法：在 Render 后台 New → Blueprint → 连接你的 GitHub 仓库 → 选择此文件
+# 或者：New → Web Service 手动按 DEPLOY.md 配置
+services:
+  - type: web
+    name: freelance-hub-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # 以下 secrets 请在 Render 后台手动填写（不要提交到 Git）
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: REVENUECAT_WEBHOOK_SECRET
+        sync: false
+      - key: REVENUECAT_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
