@@ -1,6 +1,6 @@
 <template>
   <el-container class="main-layout">
-    <el-aside width="220px" class="sidebar">
+    <el-aside v-if="!isMobile" width="220px" class="sidebar">
       <div class="logo">Freelance Hub</div>
       <el-menu :default-active="activeMenu" router class="menu">
         <el-menu-item index="/dashboard">
@@ -16,7 +16,12 @@
     </el-aside>
     <el-container>
       <el-header class="header">
-        <div class="header-title">{{ pageTitle }}</div>
+        <div class="header-title">
+          <el-icon v-if="isMobile" class="hamburger" @click="drawerOpen = true">
+            <Menu />
+          </el-icon>
+          {{ pageTitle }}
+        </div>
         <div class="header-actions">
           <el-dropdown @command="handleLocaleCommand" trigger="click">
             <span class="locale-trigger">
@@ -50,13 +55,33 @@
       </el-main>
     </el-container>
   </el-container>
+
+  <!-- 移动端导航抽屉：固定 220px 侧边栏在 375-412px 手机上内容区只剩 ~150px，
+       详情表格和图表不可用。用户常从手机打开看板链接，<768px 走抽屉导航。 -->
+  <el-drawer v-model="drawerOpen" direction="ltr" size="240px" :with-header="false" class="nav-drawer">
+    <div class="drawer-inner">
+      <div class="logo">Freelance Hub</div>
+      <el-menu :default-active="activeMenu" router class="menu" @select="drawerOpen = false">
+        <el-menu-item index="/dashboard">
+          <span>{{ t('nav.dashboard') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/annual-report">
+          <span>{{ t('nav.annualReport') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/export">
+          <span>{{ t('nav.export') }}</span>
+        </el-menu-item>
+      </el-menu>
+    </div>
+  </el-drawer>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { Menu } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useLocaleStore } from '../stores/locale'
 
@@ -79,6 +104,17 @@ const pageTitle = computed(() => {
   }
   return titles[route.path] || 'Freelance Hub'
 })
+
+// 响应式断点：与 DashboardView/AnnualReportView 内部栅格的 768px 一致
+const MOBILE_BREAKPOINT = 768
+const isMobile = ref(window.innerWidth < MOBILE_BREAKPOINT)
+const drawerOpen = ref(false)
+const onResize = () => {
+  isMobile.value = window.innerWidth < MOBILE_BREAKPOINT
+  if (!isMobile.value) drawerOpen.value = false
+}
+onMounted(() => window.addEventListener('resize', onResize))
+onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 
 const handleLocaleCommand = (cmd) => {
   if (cmd === 'en' || cmd === 'zh') {
@@ -163,6 +199,18 @@ const handleCommand = async (cmd) => {
   color: #fff;
   border-bottom: 1px solid #334155;
 }
+.drawer-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e293b;
+  margin: -1px;
+}
+.drawer-inner .menu {
+  border-right: none;
+  background: transparent;
+  flex: 1;
+}
 .menu {
   border-right: none;
   background: transparent;
@@ -185,6 +233,14 @@ const handleCommand = async (cmd) => {
   font-size: 18px;
   font-weight: 600;
   color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hamburger {
+  font-size: 20px;
+  cursor: pointer;
+  color: #475569;
 }
 .header-actions {
   display: flex;
@@ -216,5 +272,13 @@ const handleCommand = async (cmd) => {
 .content {
   background: #f8fafc;
   padding: 24px;
+}
+@media (max-width: 768px) {
+  .content {
+    padding: 12px;
+  }
+  .header-title {
+    font-size: 16px;
+  }
 }
 </style>

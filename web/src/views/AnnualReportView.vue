@@ -133,7 +133,6 @@ const fmtHours = (n) => (Number(n) || 0).toFixed(1)
 const moneyFmt = (n) => money(n, userCurrency())
 
 // 季度预缴税估算（后端返回，无该字段时隐藏整个块）
-const hasQuarterlyEstimate = computed(() => !!report.value?.quarterlyTaxEstimate)
 
 // 图表空状态：任一数据源为空时显示占位而非 300px 空白框
 const hasTrendData = computed(() => {

@@ -54,6 +54,7 @@
 
 **上传 AAB**：`mobile\build\app\outputs\bundle\release\app-release.aab`（69.6MB）
 - ⚠️ 上传后核对"App signing"页显示的 SHA-256 指纹与 `deploy/SECRETS.md` 记录一致（`81:2E:3F:F9:...`）
+- ⚠️ 构建脚本 `build_release_aab.ps1` 中的 `SENTRY_DSN` 留空时崩溃上报禁用；上线前建议在 sentry.io 建项目并注入 DSN
 
 **商店素材**（deploy/ 目录）：
 | 素材 | 文件 | 规格 |

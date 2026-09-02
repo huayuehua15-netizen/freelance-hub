@@ -17,8 +17,8 @@ export const authApi = {
 export const reportApi = {
   getMonthly: (params) => api.get('/report/monthly', { params }),
   getAnnual: (params) => api.get('/report/annual', { params }),
-  exportPdf: (params) => api.get('/report/export', { params, responseType: 'blob' }),
-  exportCsv: (params) => api.get('/report/export-csv', { params, responseType: 'blob' }),
+  exportPdf: (params) => api.get('/report/export', { params, responseType: 'blob', timeout: 60000 }),
+  exportCsv: (params) => api.get('/report/export-csv', { params, responseType: 'blob', timeout: 60000 }),
 }
 
 export const premiumApi = {

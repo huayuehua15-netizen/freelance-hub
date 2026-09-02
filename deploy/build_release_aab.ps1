@@ -22,6 +22,21 @@ Set-Location 'C:\dev\freelance_hub\mobile'
 $env:HTTP_PROXY = $null
 $env:HTTPS_PROXY = $null
 
+# 崩溃上报（Sentry）：在 https://sentry.io 创建 Android 项目后把 DSN 填到这里。
+# 留空 = 构建完全禁用上报（不影响其他功能），上线前强烈建议启用。
+$SENTRY_DSN = ''  # 例: 'https://xxxxxxxx@o0.ingest.sentry.io/0'
+
+$dartDefines = @(
+    '--dart-define=ENV=prod',
+    "--dart-define=API_BASE_URL=https://freelance-hub-api-f2gn.onrender.com/api/v1"
+)
+if ($SENTRY_DSN -ne '') {
+    $dartDefines += "--dart-define=SENTRY_DSN=$SENTRY_DSN"
+    Write-Output "  SENTRY_DSN=已注入"
+} else {
+    Write-Output "  SENTRY_DSN=(空，崩溃上报禁用)"
+}
+
 Write-Output ""
 Write-Output "== Starting release AAB build =="
 Write-Output "  ENV=prod"
@@ -36,5 +51,4 @@ Write-Output ""
     --disable-dart-dev `
     'C:\src\flutter\bin\cache\flutter_tools.snapshot' `
     build appbundle --release `
-    --dart-define=ENV=prod `
-    --dart-define=API_BASE_URL=https://freelance-hub-api-f2gn.onrender.com/api/v1
+    @dartDefines

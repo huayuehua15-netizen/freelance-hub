@@ -28,8 +28,8 @@ Track billable hours, expenses & tax deductions for freelancers.
 
 ```
 Freelance Hub helps independent contractors and freelancers track billable
-time, manage client projects, log deductible expenses, and prepare tax
-reports — all in one lightweight app that works offline.
+time, manage client projects, log deductible expenses, and estimate their
+US self-employment taxes — all in one lightweight app that works offline.
 
 WHY FREELANCE HUB?
 Most time trackers stop at hours. Tax tools skip your billable time. Freelance
@@ -43,15 +43,16 @@ CORE FEATURES
 • Expense tracking with tax-deductible categories (Software, Internet,
   Equipment, Travel, and more)
 • Monthly reports: billable hours, income, expenses, net income
-• Annual tax summary: self-employment tax estimate and quarterly payment
-  (1040-ES) suggestions — for reference only, not tax advice
+• Annual tax estimate: US federal self-employment tax and quarterly payment
+  (1040-ES) suggestions, based on current-year federal brackets — for
+  reference only, not tax advice
 • PDF export to share reports with clients or your accountant
 • Offline-first: everything works without an internet connection
 • Cloud sync across devices and a web dashboard (Annual plan)
 
 WHO IT'S FOR
-Freelancers, consultants, designers, developers, and independent contractors
-who bill by the hour and want tax season to be painless.
+US-based freelancers, consultants, designers, developers, and independent
+contractors who bill by the hour and want tax season to be painless.
 
 PRICING
 • Free — up to 3 projects, basic tracking, current-month view
@@ -64,8 +65,10 @@ Cancel anytime.
 
 DISCLAIMER
 Freelance Hub provides record-keeping and estimates for reference only and
-does not constitute tax, legal, or financial advice. Please consult a
-certified professional for filing advice.
+does not constitute tax, legal, or financial advice. Tax estimates cover US
+federal self-employment income tax only (single-filer brackets; state taxes,
+QBI and other deductions are not included). Please consult a certified
+professional for filing advice.
 ```
 
 ---
@@ -73,8 +76,8 @@ certified professional for filing advice.
 ## 关键词（可选，供参考，搜索优化）
 
 ```
-time tracker, freelancer, invoice hours, billable hours, expense tracker,
-tax deduction, self employed, contractor, timesheet, freelance
+time tracker, freelancer, billable hours, expense tracker, tax deduction,
+self employed, 1099, contractor, timesheet, freelance
 ```
 
 ---

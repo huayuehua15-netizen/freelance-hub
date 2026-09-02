@@ -300,7 +300,7 @@ const renderCharts = (d) => {
   const expenseChart = getChart(expenseChartRef)
   if (expenseChart) {
     expenseChart.setOption({
-      tooltip: { trigger: 'item', formatter: '{b}: ${c}' },
+      tooltip: { trigger: 'item', formatter: (item) => `${item.name}: ${money(item.value)}` },
       series: [{
         type: 'pie',
         radius: ['40%', '65%'],
@@ -315,7 +315,7 @@ const renderCharts = (d) => {
   const projectBar = getChart(projectBarRef)
   if (projectBar) {
     projectBar.setOption({
-      tooltip: { trigger: 'axis', formatter: '{b}: ${c}' },
+      tooltip: { trigger: 'axis', formatter: (items) => items.map((it) => `${it.name}: ${money(it.value)}`).join('\n') },
       grid: { left: 40, right: 16, top: 24, bottom: 28 },
       xAxis: { type: 'category', data: byProject.map((p) => p.projectName) },
       yAxis: { type: 'value' },
