@@ -297,12 +297,24 @@ class _ProjectEditSheetState extends State<_ProjectEditSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final rate = double.tryParse(_rateController.text.trim()) ?? 0;
-    widget.project
-      ..clientName = _clientNameController.text.trim()
-      ..projectName = _projectNameController.text.trim()
-      ..hourlyRate = rate
-      ..clientEmail = _emailController.text.trim();
-    await context.read<ProjectProvider>().updateProject(widget.project);
+    final p = widget.project;
+    // P1：禁止直接 mutate Hive live 对象（widget.project 即 Hive box 引用），
+    // 构造副本后由 provider 落库写回，避免取消编辑时污染内存缓存。
+    final updated = ClientProject(
+      projectId: p.projectId,
+      clientName: _clientNameController.text.trim(),
+      clientEmail: _emailController.text.trim(),
+      projectName: _projectNameController.text.trim(),
+      hourlyRate: rate,
+      currency: p.currency,
+      status: p.status,
+      isDeleted: p.isDeleted,
+      syncStatus: p.syncStatus,
+      serverUpdateTime: p.serverUpdateTime,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    );
+    await context.read<ProjectProvider>().updateProject(updated);
     if (mounted) Navigator.pop(context);
   }
 

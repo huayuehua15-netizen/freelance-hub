@@ -1,4 +1,6 @@
 const ClientProject = require('../models/ClientProject');
+const TimeLog = require('../models/TimeLog');
+const ExpenseLog = require('../models/ExpenseLog');
 const SyncService = require('../services/syncService');
 const { ERROR_CODES, FREE_PROJECT_LIMIT, PREMIUM_TYPES, SYNC_BATCH_LIMIT } = require('../utils/constants');
 const { t } = require('../utils/i18n');
@@ -113,7 +115,25 @@ const remove = async (req, res, next) => {
     }
 
     project.isDeleted = true;
+    project.serverUpdateTime = Date.now();
     await project.save();
+
+    // 级联软删（P1 修复）：项目下的工时与开支一并软删并推进 serverUpdateTime，
+    // 使移动端/其他设备通过增量 pull 感知删除（软删随同步协议传播，
+    // 物理删除会静默丢数据且无法传播到离线端）。
+    // 单查询聚合更新，无并发窗口；与项目删除同一事务语义（Mongo 无跨集合事务时
+    // 以"已删除项目的数据不可再被报表聚合"为最终一致性目标）。
+    const now = Date.now();
+    await Promise.all([
+      TimeLog.updateMany(
+        { userId: req.userId, projectId, isDeleted: false },
+        { $set: { isDeleted: true, serverUpdateTime: now } }
+      ),
+      ExpenseLog.updateMany(
+        { userId: req.userId, projectId, isDeleted: false },
+        { $set: { isDeleted: true, serverUpdateTime: now } }
+      ),
+    ]);
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,

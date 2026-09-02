@@ -13,6 +13,7 @@ import '../providers/expense_provider.dart';
 import '../widgets/premium_guard.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
+import '../utils/pdf_font.dart';
 import '../utils/tax_estimator.dart';
 import '../l10n/app_localizations.dart';
 
@@ -400,7 +401,10 @@ class _AnnualReportScreenState extends State<AnnualReportScreen> {
       byCat[e.category] = (byCat[e.category] ?? 0) + e.amount;
     }
 
-    final doc = pw.Document();
+    // B4：注入 CJK 字体，否则中文备注/tag/商户名在 PDF 渲染为豆腐块
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(base: await CjkFont.getCjkFont()),
+    );
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       build: (ctx) => [

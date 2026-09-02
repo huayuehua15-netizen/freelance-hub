@@ -37,3 +37,6 @@ SESSION_SUMMARY.md
 .env
 .env.*
 !.env.example
+
+# ===== Secrets (never commit) =====
+deploy/SECRETS.md

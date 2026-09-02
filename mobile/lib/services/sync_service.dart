@@ -9,6 +9,15 @@ import 'hive_service.dart';
 enum SyncStatus { idle, syncing, success, failed }
 
 class SyncService extends ChangeNotifier {
+  // P1 单例化：主 isolate 内全局共享同一实例，避免多实例并发推送/拉取
+  // 造成 Hive 写入竞争与同步状态错乱（app.dart 与 Provider 消费同一实例）。
+  // 注意：workmanager 后台 isolate 内存隔离，`SyncService()` 在后台 isolate
+  // 中会自然创建独立实例——这是刻意设计，后台任务需独立重建状态。
+  SyncService._();
+  static SyncService? _instance;
+  static SyncService get instance => _instance ??= SyncService._();
+  factory SyncService() => instance;
+
   final ApiService _api = ApiService();
   SyncStatus _status = SyncStatus.idle;
   String? _lastError;

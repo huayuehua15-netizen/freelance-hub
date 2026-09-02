@@ -50,6 +50,9 @@ app.use(helmet({
   strictTransportSecurity: config.isProd
     ? { maxAge: 31536000, includeSubDomains: true, preload: true }
     : false,
+  // 显式 no-referrer：API 场景下引用策略收紧到零泄漏（helmet 默认已是
+  // no-referrer，显式声明便于审计与防未来默认值漂移）
+  referrerPolicy: { policy: 'no-referrer' },
 }));
 // Preserve the exact webhook payload for HMAC verification.  Re-serialising a
 // parsed JSON object changes whitespace/key ordering and makes signatures

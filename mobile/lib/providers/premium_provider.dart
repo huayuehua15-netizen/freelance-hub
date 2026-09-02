@@ -161,6 +161,21 @@ class PremiumProvider extends ChangeNotifier {
     _handleCustomerInfoUpdate(result.customerInfo);
   }
 
+  /// 登出时清理 RevenueCat 会话（P1）：把 RC 当前用户切回匿名，防止
+  /// 下个账号登录时继承旧账号的 entitlement 缓存（串号/越权展示）。
+  /// 失败不阻断登出——RC 配置/网络异常时本地登出照常完成。
+  /// 登出与删号复用同一接口：purchases_flutter Dart SDK 未暴露 `reset`
+  /// 方法（仅原生 Android SDK 有），`logOut` 已满足"清除本地匿名历史"
+  /// 的 GDPR 删除语义。
+  Future<void> logoutFromRevenueCat() async {
+    if (!_purchasesConfigured) return;
+    try {
+      await Purchases.logOut();
+    } catch (e) {
+      debugPrint('RevenueCat logOut failed: $e');
+    }
+  }
+
   /// Applies the server entitlement after app login or an offline cache
   /// restore.  This is deliberately separate from demo controls so actual
   /// expiry/trial timestamps are never replaced by invented values.

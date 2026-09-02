@@ -254,8 +254,10 @@ const handleExportPdf = async () => {
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    // 延迟释放：同 tick 释放会在 Safari/部分浏览器中断大文件下载
-    setTimeout(() => URL.revokeObjectURL(url), 4000)
+    // 延迟释放（P1/L7 修复）：4s 在 Safari/大文件/慢速下载下过早，
+    // 会在下载完成前 revoke 导致文件损坏或失败。延至 60s 覆盖绝大多数
+    // 下载窗口；对象由浏览器 GC 兜底回收，长期驻留风险可忽略。
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
     ElMessage.success(t('report.exported'))
   } catch (e) {
     // 错误已由 request.js 统一提示

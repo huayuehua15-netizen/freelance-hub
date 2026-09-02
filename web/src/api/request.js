@@ -147,6 +147,17 @@ api.interceptors.response.use(
       }
     }
 
+    // 401 且已重试过（P1 修复）：刷新成功后原请求重放仍 401 —— access token
+    // 已被服务端判死（账号被删/禁用/token 轮换竞态）。此前该分支静默失败
+    // （notifyError 对 401 直接 return），用户看到空白无任何反馈。这里走
+    // 与会话过期一致的显式提示 + 清登录态 + 跳登录。
+    if (error.response?.status === 401 && !isAuthEndpoint(originalRequest.url) && originalRequest._retry) {
+      ElMessage.error(t('errors.sessionExpired'))
+      authStore.logout()
+      router.push('/login')
+      return Promise.reject(error)
+    }
+
     // 401 但没有 refreshToken（存储损坏/部分残留）：无法刷新，走会话过期
     // 流程，否则所有请求静默失败且 UI 无任何反馈
     if (error.response?.status === 401 && !isAuthEndpoint(originalRequest.url) && !authStore.refreshToken) {

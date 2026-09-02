@@ -163,17 +163,27 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
     final provider = context.read<TimelogProvider>();
     final rate = context.read<ProjectProvider>().getProjectById(_projectId ?? '')?.hourlyRate ?? 0;
     final t = widget.timeLog;
-    t
-      ..projectId = _projectId ?? ''
-      ..startTime = _start.millisecondsSinceEpoch
-      ..endTime = _end.millisecondsSinceEpoch
-      ..duration = _durationHours
-      ..isBillable = _isBillable
+    // P1：禁止直接 mutate Hive live 对象 —— widget.timeLog 是 Hive box 中
+    // 的同一对象引用，直接改字段会立即污染内存缓存（用户取消编辑时 UI 与
+    // 同步仍会读到脏值）。构造副本，由 provider 落库时统一写回。
+    final updated = TimeLog(
+      timeLogId: t.timeLogId,
+      projectId: _projectId ?? '',
+      startTime: _start.millisecondsSinceEpoch,
+      endTime: _end.millisecondsSinceEpoch,
+      duration: _durationHours,
+      isBillable: _isBillable,
       // 非计费工时不产生收入：金额必须清零，否则收入/净收入/自雇税估算全部虚高
-      ..billableAmount = _isBillable ? double.parse((_durationHours * rate).toStringAsFixed(2)) : 0.0
-      ..tag = _tagController.text.trim()
-      ..note = _noteController.text.trim();
-    await provider.updateTimeLog(t);
+      billableAmount: _isBillable ? double.parse((_durationHours * rate).toStringAsFixed(2)) : 0.0,
+      tag: _tagController.text.trim(),
+      note: _noteController.text.trim(),
+      isDeleted: t.isDeleted,
+      syncStatus: t.syncStatus,
+      serverUpdateTime: t.serverUpdateTime,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    );
+    await provider.updateTimeLog(updated);
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(

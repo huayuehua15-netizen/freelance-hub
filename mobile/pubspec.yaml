@@ -50,3 +50,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # B4：PDF 中文字体（Noto Sans SC 子集，GB2312 全量汉字，OFL 开源许可）
+  assets:
+    - assets/fonts/

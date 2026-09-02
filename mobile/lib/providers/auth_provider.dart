@@ -7,11 +7,19 @@ import '../services/background_task_service.dart';
 import '../services/hive_service.dart';
 import '../services/api_service.dart';
 import '../utils/currency_format.dart';
+import 'premium_provider.dart';
 
 class AuthProvider extends ChangeNotifier {
   UserInfo? _user;
   String? _accessToken;
   String? _refreshToken;
+
+  // 登出/删号时联动清理 RevenueCat 会话（P1），由 app.dart 初始化注入。
+  PremiumProvider? _premiumProvider;
+
+  void setPremiumProvider(PremiumProvider provider) {
+    _premiumProvider = provider;
+  }
 
   // 邮箱验证状态（内存态，随 /auth/me 刷新）：不写入 Hive——持久化一个
   // 可能过期的验证状态只会造成误判，横幅消失与否以服务端为准。
@@ -33,8 +41,10 @@ class AuthProvider extends ChangeNotifier {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   Future<void> login(String email, String password) async {
+    // P1：邮箱统一 trim，与后端 B8 注册查重 trim 对齐，避免
+    // "  user@x.com " 被当作不同账号反复走复活流程。
     final res = await ApiService().post('/auth/login', data: {
-      'email': email,
+      'email': email.trim(),
       'password': password,
     });
     await _applySession(res['data'] as Map<String, dynamic>);
@@ -42,9 +52,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> register(String email, String password, String userName) async {
     final res = await ApiService().post('/auth/register', data: {
-      'email': email,
+      'email': email.trim(),
       'password': password,
-      'userName': userName,
+      'userName': userName.trim(),
     });
     await _applySession(res['data'] as Map<String, dynamic>);
   }
@@ -58,6 +68,8 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     _accessToken = null;
     _refreshToken = null;
+    // P1：RevenueCat 会话复位（切回匿名），防下个账号串 entitlement
+    await _premiumProvider?.logoutFromRevenueCat();
     await _clearStorage();
     // 取消所有后台任务：登出后不再有登录用户，后台同步和计时提醒都应停止。
     // 注意：cancelAll 不影响未结束的计时（计时状态由 TimelogProvider 单独管理，
@@ -78,6 +90,8 @@ class AuthProvider extends ChangeNotifier {
     _user = null;
     _accessToken = null;
     _refreshToken = null;
+    // P1：账号删除后清除 RC 匿名购买历史（GDPR 删除语义，复用 logOut）
+    await _premiumProvider?.logoutFromRevenueCat();
     await _clearStorage();
     // 账号删除后所有后台任务都应停止。
     try {

@@ -396,16 +396,26 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
 
     if (_isEditing) {
       final e = widget.expense!;
-      e
-        ..amount = amount
-        ..category = _selectedCategory
-        ..expenseDate = _selectedDate.millisecondsSinceEpoch
-        ..projectId = _selectedProjectId
-        ..merchant = _merchantController.text.trim()
-        ..note = _noteController.text.trim()
-        ..isTaxDeductible = _isTaxDeductible
-        ..receiptUrl = _receiptUrl ?? '';
-      await provider.updateExpense(e);
+      // P1：禁止直接 mutate Hive live 对象（widget.expense 即 Hive box 引用），
+      // 构造副本后由 provider 落库写回，避免取消编辑时污染内存缓存。
+      final updated = ExpenseLog(
+        expenseId: e.expenseId,
+        projectId: _selectedProjectId,
+        amount: amount,
+        currency: e.currency,
+        expenseDate: _selectedDate.millisecondsSinceEpoch,
+        category: _selectedCategory,
+        isTaxDeductible: _isTaxDeductible,
+        merchant: _merchantController.text.trim(),
+        note: _noteController.text.trim(),
+        receiptUrl: _receiptUrl ?? '',
+        isDeleted: e.isDeleted,
+        syncStatus: e.syncStatus,
+        serverUpdateTime: e.serverUpdateTime,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      );
+      await provider.updateExpense(updated);
     } else {
       await provider.createExpense(
         amount: amount,

@@ -20,6 +20,12 @@ class ApiService {
   late final Dio _dio;
   AuthProvider? _authProvider;
 
+  // 401 刷新 single-flight（P1）：并发多个 401 只发起一次 /auth/refresh，
+  // 其余请求挂同一 future 等待刷新完成后再重试。后端 refresh token 原子
+  // 轮换（M5）下，并发刷新会让后到者因旧 token 已失效而 401 → 误伤本可
+  // 恢复的请求。刷新失败时 future 清空，允许后续请求重新尝试。
+  Future<void>? _refreshing;
+
   ApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConfig.apiBaseUrl,
@@ -56,18 +62,14 @@ class ApiService {
           final refresh = _authProvider?.refreshToken;
           if (refresh != null && refresh.isNotEmpty) {
             try {
-              final refreshRes = await _dio.post(
-                '/auth/refresh',
-                data: {'refreshToken': refresh},
-              );
-              final map = Map<String, dynamic>.from(refreshRes.data as Map);
-              final data = map['data'] as Map<String, dynamic>;
-              final access = data['accessToken'] as String;
-              final newRefresh = (data['refreshToken'] as String?) ?? refresh;
-              await _authProvider?.setTokens(access, newRefresh);
-
+              await _refreshAccessToken();
+              // 刷新成功后用最新 access token 重试原请求（并发场景下
+              // 其它 401 请求可能已先完成轮换，这里重新读取当前 token）
               options.extra['_retried'] = true;
-              options.headers['Authorization'] = 'Bearer $access';
+              final currentToken = _authProvider?.accessToken;
+              if (currentToken != null) {
+                options.headers['Authorization'] = 'Bearer $currentToken';
+              }
               final retryRes = await _dio.fetch(options);
               return handler.resolve(retryRes);
             } catch (_) {
@@ -78,6 +80,31 @@ class ApiService {
         return handler.next(error);
       },
     ));
+  }
+
+  /// 并发互斥刷新：同批 401 共享同一 refresh 请求。
+  Future<void> _refreshAccessToken() {
+    final inflight = _refreshing;
+    if (inflight != null) return inflight;
+    final refresh = _authProvider?.refreshToken;
+    if (refresh == null || refresh.isEmpty) {
+      return Future.error(StateError('No refresh token available'));
+    }
+    final future = _doRefresh(refresh).whenComplete(() => _refreshing = null);
+    _refreshing = future;
+    return future;
+  }
+
+  Future<void> _doRefresh(String refresh) async {
+    final refreshRes = await _dio.post(
+      '/auth/refresh',
+      data: {'refreshToken': refresh},
+    );
+    final map = Map<String, dynamic>.from(refreshRes.data as Map);
+    final data = map['data'] as Map<String, dynamic>;
+    final access = data['accessToken'] as String;
+    final newRefresh = (data['refreshToken'] as String?) ?? refresh;
+    await _authProvider?.setTokens(access, newRefresh);
   }
 
   void setAuthProvider(AuthProvider provider) {

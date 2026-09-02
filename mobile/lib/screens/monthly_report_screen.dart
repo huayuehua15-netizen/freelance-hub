@@ -12,6 +12,7 @@ import '../providers/premium_provider.dart';
 import '../providers/timelog_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/project_provider.dart';
+import '../utils/pdf_font.dart';
 import '../widgets/premium_guard.dart';
 import '../config/app_theme.dart';
 import '../utils/currency_format.dart';
@@ -460,7 +461,10 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     final totalExpenses = expenses.fold<double>(0, (s, e) => s + e.amount);
     final net = totalIncome - totalExpenses;
 
-    final doc = pw.Document();
+    // B4：注入 CJK 字体，否则中文备注/tag/商户名在 PDF 渲染为豆腐块
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(base: await CjkFont.getCjkFont()),
+    );
     doc.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
       build: (ctx) => [

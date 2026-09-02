@@ -55,6 +55,8 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
 
     await safeStep('hive', () => HiveService.init());
     await safeStep('api', () async => ApiService().setAuthProvider(_authProvider));
+    // 登出/删号联动清理 RevenueCat 会话（P1）
+    _authProvider.setPremiumProvider(_premiumProvider);
     await safeStep('restoreSession', () => _authProvider.loadFromStorage());
     await safeStep('refreshCurrentUser', () => _authProvider.refreshCurrentUser());
     await safeStep('revenuecat', () => _premiumProvider.initialize(appUserId: _authProvider.user?.userId));
