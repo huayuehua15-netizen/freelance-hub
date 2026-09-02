@@ -4,18 +4,12 @@ const WebhookEvent = require('../models/WebhookEvent');
 const config = require('../config/env');
 const logger = require('../utils/logger');
 const { PREMIUM_TYPES } = require('../utils/constants');
+const { tierFromIdentifier } = require('../utils/subscriptionTier');
 const { t } = require('../utils/i18n');
 
 // 订阅档位排序：仅允许"升档"立即生效；降档（年→月）等到续费/过期事件再落地，
 // 与 Google Play 的结算规则一致（升级立即生效并按比例扣费，降档下周期生效）。
 const TIER_RANK = { [PREMIUM_TYPES.FREE]: 0, [PREMIUM_TYPES.MONTHLY]: 1, [PREMIUM_TYPES.ANNUAL]: 2 };
-
-const tierFromProductId = (productId) => {
-  if (!productId) return null;
-  if (productId.includes('annual')) return PREMIUM_TYPES.ANNUAL;
-  if (productId.includes('monthly')) return PREMIUM_TYPES.MONTHLY;
-  return null;
-};
 
 const applyEntitlement = (user, { tier, expireTime, trialEndTime }) => {
   if (expireTime !== undefined) user.expireTime = expireTime;
@@ -78,20 +72,7 @@ const handleRevenuecatWebhook = async (req, res) => {
       return res.status(200).json({ received: true });
     }
 
-    // 幂等去重：RC at-least-once 投递，重试/重放携带相同 event.id。
-    // 唯一索引插入失败 = 已处理过，直接确认，防止重放续命会员。
     const eventId = eventData?.id;
-    if (eventId) {
-      try {
-        await WebhookEvent.create({ eventId: String(eventId), type: String(type || 'unknown'), appUserId });
-      } catch (dupErr) {
-        if (dupErr?.code === 11000 || dupErr?.name === 'MongoServerError') {
-          logger.info(`Duplicate webhook event ${eventId}, already processed`);
-          return res.status(200).json({ received: true });
-        }
-        throw dupErr;
-      }
-    }
 
     const user = await User.findOne({ userId: appUserId });
     if (!user) {
@@ -109,8 +90,19 @@ const handleRevenuecatWebhook = async (req, res) => {
       case 'INITIAL_PURCHASE':
       case 'RENEWAL':
       case 'UNCANCELLATION':
+      case 'SUBSCRIPTION_RECOVERED':
       case 'SUBSCRIPTION_EXTENDED': {
-        const tier = tierFromProductId(productId);
+        // 优先按 entitlement ID 判档（webhook 载荷带 entitlement_ids），
+        // fallback 才看 product_id 子串。tier 解析失败时绝不发"幽灵会员"
+        // （只写 expireTime 不改 premiumType，付费用户看起来到期却停在 free），
+        // 显式 error 留日志排查，返回 200 让 RC 停止重试。
+        const tier = tierFromIdentifier(productId, eventData.entitlement_ids || []);
+        if (!tier) {
+          logger.error(
+            `Cannot resolve tier for ${type} of ${appUserId} (product=${productId}, entitlements=${JSON.stringify(eventData.entitlement_ids || [])}). Entitlement NOT applied — check RevenueCat product/entitlement configuration.`,
+          );
+          break;
+        }
         // 单调性守卫：过期时间只能向前推。重放的旧 RENEWAL（更早的到期
         // 时间）不得回退已存储的 expireTime。
         const currentExpire = user.expireTime ?? 0;
@@ -135,7 +127,7 @@ const handleRevenuecatWebhook = async (req, res) => {
         // RC 文档明确：PRODUCT_CHANGE 不代表新订阅立即生效。Google Play 的
         // 规则是升级立即生效、降档下个周期生效 —— 这里仅对升档立即应用，
         // 降档保留当前档位，等待 RENEWAL/EXPIRATION 事件落地。
-        const tier = tierFromProductId(productId);
+        const tier = tierFromIdentifier(productId, eventData.entitlement_ids || []);
         if (tier && TIER_RANK[tier] > TIER_RANK[user.premiumType]) {
           applyEntitlement(user, { tier, expireTime: expirationAtMs ?? undefined });
           await user.save();
@@ -189,8 +181,30 @@ const handleRevenuecatWebhook = async (req, res) => {
         logger.info(`User ${appUserId} subscription paused`);
         break;
       }
+      case 'TRANSFER': {
+        // 订阅在 RC 用户间转移（罕见）。当前系统 app_user_id 即本地 userId，
+        // 单账号体系下不做迁移处理，显式记录避免静默吞掉。
+        logger.info(`User ${appUserId} TRANSFER event received, no action (single-account model)`);
+        break;
+      }
       default:
         logger.info(`Unhandled RevenueCat event type: ${type}`);
+    }
+
+    // 幂等去重：处理成功后再落去重行。放在处理之前会在"落行后、业务写入前
+    // 崩溃"时永久吞掉 RC 重试（购买事件丢失）。放在之后最坏情况是重复投递被
+    // 各处理一次，而权益写入本身有单调性守卫（expireTime 只进不退、EXPIRATION
+    // 幂等），重复处理是安全的。
+    if (eventId) {
+      try {
+        await WebhookEvent.create({ eventId: String(eventId), type: String(type || 'unknown'), appUserId });
+      } catch (dupErr) {
+        if (dupErr?.code === 11000) {
+          logger.info(`Duplicate webhook event ${eventId}, already processed`);
+        } else {
+          throw dupErr;
+        }
+      }
     }
 
     return res.status(200).json({ received: true });

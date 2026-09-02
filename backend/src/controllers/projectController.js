@@ -25,6 +25,12 @@ const batchUpsert = async (req, res, next) => {
       });
     }
 
+    // 单币种强制（v1 策略）：项目货币决定计费金额语义，报表聚合不换算，
+    // 与账号货币不一致的项目会把报表金额变成跨币种混加。统一改写为账号货币。
+    for (const project of projects) {
+      if (project && typeof project === 'object') project.currency = req.user.currency;
+    }
+
     const result = await SyncService.batchUpsert(req.userId, ClientProject, projects, 'projectId');
 
     req.user.lastSyncTime = Date.now();

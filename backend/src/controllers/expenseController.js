@@ -25,6 +25,13 @@ const batchUpsert = async (req, res, next) => {
       });
     }
 
+    // 单币种强制（v1 策略）：报表聚合对多币种只做求和不做换算，混合币种
+    // 的金额相加是算术错误且会喂进税务估算。统一改写为账号货币，保证
+    // sum(amount) 语义正确。前端展示走账号货币全局配置，无感知。
+    for (const expense of expenses) {
+      if (expense && typeof expense === 'object') expense.currency = req.user.currency;
+    }
+
     const result = await SyncService.batchUpsert(req.userId, ExpenseLog, expenses, 'expenseId');
 
     req.user.lastSyncTime = Date.now();

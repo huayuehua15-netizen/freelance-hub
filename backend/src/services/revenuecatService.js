@@ -1,6 +1,7 @@
 const config = require('../config/env');
 const logger = require('../utils/logger');
 const { PREMIUM_TYPES } = require('../utils/constants');
+const { tierFromIdentifier } = require('../utils/subscriptionTier');
 
 const RC_API_BASE = 'https://api.revenuecat.com/v1';
 // 出站校验缓存窗口：同用户 5 分钟内不重复调 RC API，避免配额耗尽与延迟叠加
@@ -89,12 +90,16 @@ const resolveEntitlement = (subscriber) => {
     }
   }
 
-  // 2) fallback：subscriptions
+  // 2) fallback：subscriptions。不依赖 is_active（RC 载荷不保证该字段），
+  //    以 expires_date 为准：缺失视为仍有效（终身/非续订型），已过期视为失效。
   if (!activeProduct) {
     for (const [id, sub] of Object.entries(subs)) {
-      if (sub && sub.is_active) {
+      if (!sub) continue;
+      const exp = sub.expires_date ? new Date(sub.expires_date).getTime() : null;
+      const stillActive = exp === null || exp > now;
+      if (stillActive) {
         activeProduct = id;
-        activeExpiration = sub.expires_date ? new Date(sub.expires_date).getTime() : null;
+        activeExpiration = exp;
         break;
       }
     }
@@ -104,13 +109,7 @@ const resolveEntitlement = (subscriber) => {
     return { premiumType: PREMIUM_TYPES.FREE, expireTime: null };
   }
 
-  const pid = String(activeProduct).toLowerCase();
-  let premiumType = PREMIUM_TYPES.FREE;
-  if (pid.includes('annual')) {
-    premiumType = PREMIUM_TYPES.ANNUAL;
-  } else if (pid.includes('monthly')) {
-    premiumType = PREMIUM_TYPES.MONTHLY;
-  }
+  const premiumType = tierFromIdentifier(activeProduct) ?? PREMIUM_TYPES.FREE;
 
   // 过期时间已过 → 视为失效（RC 通常也会把 is_active 置 false，这里双保险）
   if (activeExpiration && activeExpiration <= now) {
