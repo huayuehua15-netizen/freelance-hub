@@ -12,8 +12,16 @@ class DemoDataSeeder {
   static const Uuid _uuid = Uuid();
 
   static Future<void> seedIfEmpty({bool isLoggedIn = false}) async {
-    // 已有数据则跳过，避免覆盖用户真实录入
-    if (HiveService.projectBoxInstance.isNotEmpty) return;
+    // 一次性标记：播种过（或本机已有数据）就永不重播。否则游客删掉 demo
+    // 项目后下次启动又会被重新塞满，且永远腾不出 Free 的 3 项目配额。
+    final configBox = HiveService.configBoxInstance;
+    if (configBox.get('demo_seeded') == true) return;
+
+    // 已有数据则跳过（视为真实数据），避免覆盖用户录入，并落标记
+    if (HiveService.projectBoxInstance.isNotEmpty) {
+      await configBox.put('demo_seeded', true);
+      return;
+    }
 
     // 已登录用户跳过 seed：换新设备的真实用户应先拉取云端数据；
     // 种子数据标记 syncStatus=0，一旦推送会污染真实云端账号
@@ -21,9 +29,10 @@ class DemoDataSeeder {
     if (isLoggedIn) return;
 
     // 云端数据已有归属（本机曾同步过其他账号）也跳过
-    final configBox = HiveService.configBoxInstance;
     final owner = configBox.get('data_owner_id') as String?;
     if (owner != null && owner.isNotEmpty) return;
+
+    await configBox.put('demo_seeded', true);
 
     final p1 = _project('Acme Corp', 'billing@acmecorp.com', 'Website Redesign', 45);
     final p2 = _project('StartupXYZ', 'ops@startupxyz.io', 'Mobile UI Kit Design', 50);

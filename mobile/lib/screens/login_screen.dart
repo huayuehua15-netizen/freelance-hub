@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
 import '../l10n/app_localizations.dart';
+import '../services/sync_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -219,7 +222,9 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
 
+    // 在进入 await 前取好 Provider 引用，避免 async 间隙使用 BuildContext
     final auth = context.read<AuthProvider>();
+    final premium = context.read<PremiumProvider>();
     try {
       if (_isLogin) {
         await auth.login(_emailController.text, _passwordController.text);
@@ -227,7 +232,14 @@ class _LoginScreenState extends State<LoginScreen> {
         await auth.register(_emailController.text, _passwordController.text, _nameController.text.trim());
       }
       if (!mounted) return;
-      await _syncPremium(context);
+      await _syncPremium(auth, premium);
+      // 登录后立即触发一次云端同步（Annual）：后台周期任务由系统调度，
+      // 可能延迟数分钟，换设备登录的用户会先看到空数据——「数据丢了」
+      // 是离线优先应用最典型的一星评价来源。不阻塞跳转，失败静默重试。
+      final user = auth.user;
+      if (premium.canCloudSync && user != null) {
+        unawaited(SyncService().syncAll(userId: user.userId));
+      }
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
       String msg;
@@ -244,9 +256,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Associates purchases with the authenticated account, then applies the
   /// server entitlement cache while RevenueCat webhook updates propagate.
-  Future<void> _syncPremium(BuildContext context) async {
-    final user = context.read<AuthProvider>().user;
-    final premium = context.read<PremiumProvider>();
+  Future<void> _syncPremium(AuthProvider auth, PremiumProvider premium) async {
+    final user = auth.user;
     if (user == null) return;
     await premium.identifyUser(user.userId);
     premium.applyServerEntitlement(

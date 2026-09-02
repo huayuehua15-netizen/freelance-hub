@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/client_project.dart';
 import '../services/hive_service.dart';
 import 'premium_provider.dart';
+import '../utils/currency_format.dart';
 
 class ProjectProvider extends ChangeNotifier {
   static const Uuid _uuid = Uuid();
@@ -35,7 +36,7 @@ class ProjectProvider extends ChangeNotifier {
     required String projectName,
     required double hourlyRate,
     String clientEmail = '',
-    String currency = 'USD',
+    String? currency,
   }) async {
     if (hasReachedFreeLimit) {
       // Free版达到3个项目上限
@@ -48,7 +49,7 @@ class ProjectProvider extends ChangeNotifier {
       projectName: projectName,
       hourlyRate: hourlyRate,
       clientEmail: clientEmail,
-      currency: currency,
+      currency: currency ?? CurrencyFormat.current,
       createdAt: now,
       updatedAt: now,
     );

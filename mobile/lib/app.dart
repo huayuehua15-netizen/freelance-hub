@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'config/app_config.dart';
 import 'config/app_theme.dart';
 import 'routes.dart';
 import 'providers/auth_provider.dart';
@@ -16,6 +18,7 @@ import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/demo_data_seeder.dart';
 import 'services/sync_service.dart';
+import 'utils/error_reporter.dart';
 
 class FreelanceHubApp extends StatefulWidget {
   const FreelanceHubApp({super.key});
@@ -48,8 +51,10 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
     Future<void> safeStep(String name, Future<void> Function() step) async {
       try {
         await step();
-      } catch (e) {
+      } catch (e, st) {
         debugPrint('Init step "$name" failed (degraded): $e');
+        // 初始化失败静默降级可以接受，但必须上报——否则线上问题无从发现
+        unawaited(ErrorReporter.report(e, st, 'init:$name'));
       }
     }
 
@@ -66,7 +71,11 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
     // running session can safely recreate its foreground notification.
     await safeStep('notifications', () => NotificationService.init());
     await safeStep('recoverTimer', () => _timelogProvider.recoverTimer());
-    await safeStep('demoSeed', () => DemoDataSeeder.seedIfEmpty(isLoggedIn: _authProvider.isLoggedIn));
+    // Demo 数据仅限开发构建：真实新用户（未登录）会被播种 3 个假项目，
+    // 占满 Free 3 项目配额且注册后被推到真实云端账号（P0）。
+    if (AppConfig.isDev) {
+      await safeStep('demoSeed', () => DemoDataSeeder.seedIfEmpty(isLoggedIn: _authProvider.isLoggedIn));
+    }
     await safeStep('loadData', () async {
       await _projectProvider.loadProjects();
       await _timelogProvider.loadTimeLogs();
@@ -74,9 +83,10 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
     });
     await safeStep('notificationPermission', () => NotificationService.requestPermission());
     await safeStep('expiryReminder', () => _premiumProvider.checkExpiryReminder());
-    // 注册后台同步任务：仅登录用户需要。游客没有云端账号，注册了也是空跑。
+    // 注册后台同步任务：仅登录且 Annual 用户需要（云端同步是 Annual 权益，
+    // 后端也会拒绝非 Annual 的 batch-upsert，注册了只会永久空转重试）。
     // 用 keep 策略，重复注册不会抛错。
-    if (_authProvider.isLoggedIn) {
+    if (_authProvider.isLoggedIn && _premiumProvider.canCloudSync) {
       await safeStep('backgroundSync', () => BackgroundTaskService.registerBackgroundSync());
     }
     // 如果启动时存在 running 计时，恢复晚间提醒任务。

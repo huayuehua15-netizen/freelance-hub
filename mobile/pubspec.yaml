@@ -35,6 +35,10 @@ dependencies:
   workmanager: ^0.10.7
   # 通知
   flutter_local_notifications: ^17.2.2
+  # 崩溃上报（DSN 由构建期 --dart-define=SENTRY_DSN 注入，留空则完全禁用）
+  sentry_flutter: ^9.0.0
+  # error_reporter 直接调用 Sentry.captureException，需显式声明
+  sentry: ^9.0.0
   # 工具
   intl: ^0.20.3
   uuid: ^4.4.0

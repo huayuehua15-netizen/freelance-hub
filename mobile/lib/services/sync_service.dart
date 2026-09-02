@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:uuid/uuid.dart';
 import '../models/client_project.dart';
 import '../models/time_log.dart';
 import '../models/expense_log.dart';
 import 'api_service.dart';
 import 'hive_service.dart';
+import '../utils/error_reporter.dart';
 
 enum SyncStatus { idle, syncing, success, failed }
 
@@ -100,10 +102,11 @@ class SyncService extends ChangeNotifier {
       if (_ownershipMismatch) {
         _lastError = 'Local data belongs to a different account; push skipped.';
       }
-    } catch (e) {
+    } catch (e, st) {
       _lastError = e.toString();
       _status = SyncStatus.failed;
-      // 失败时保留本地数据，不删除
+      // 失败时保留本地数据，不删除；同时上报（连续失败意味着用户权益受损）
+      unawaited(ErrorReporter.report(e, st, 'syncAll'));
     } finally {
       notifyListeners();
     }
@@ -216,13 +219,14 @@ class SyncService extends ChangeNotifier {
         if (local == null) {
           await box.put(pid, _projectFromServer(map));
         } else if (serverTs > local.updatedAt) {
-          // 本地有未推送修改：server 版本即使更新也只标记冲突，绝不覆盖本地数据
+          // LWW：serverTs 严格大于本地 clientUpdatedAt → 服务端胜出，直接覆盖。
+          // 本地若有未推送的修改，推送环节服务端仍会按 clientTs >= serverTs
+          // 重新仲裁，不会丢失。旧实现标记 syncStatus=2 但无任何冲突 UI，
+          // 下一轮仍被覆盖，形成永不解决的僵尸态。
           if (local.syncStatus == 0) {
-            local.syncStatus = 2;
-            await local.save();
-          } else {
-            await box.put(pid, _projectFromServer(map));
+            debugPrint('Sync: local project $pid loses LWW (local=${local.updatedAt}, server=$serverTs), server version applied');
           }
+          await box.put(pid, _projectFromServer(map));
         }
       }
       cursor = data['hasMore'] == true && data['nextCursor'] != null ? '${data['nextCursor']}' : null;
@@ -246,12 +250,11 @@ class SyncService extends ChangeNotifier {
         if (local == null) {
           await box.put(id, _timeLogFromServer(map));
         } else if (serverTs > local.updatedAt) {
+          // LWW：见 _pullProjects 内注释——服务端严格更新时直接覆盖。
           if (local.syncStatus == 0) {
-            local.syncStatus = 2;
-            await local.save();
-          } else {
-            await box.put(id, _timeLogFromServer(map));
+            debugPrint('Sync: local timelog $id loses LWW (local=${local.updatedAt}, server=$serverTs), server version applied');
           }
+          await box.put(id, _timeLogFromServer(map));
         }
       }
       cursor = data['hasMore'] == true && data['nextCursor'] != null ? '${data['nextCursor']}' : null;
@@ -275,12 +278,11 @@ class SyncService extends ChangeNotifier {
         if (local == null) {
           await box.put(id, _expenseFromServer(map));
         } else if (serverTs > local.updatedAt) {
+          // LWW：见 _pullProjects 内注释——服务端严格更新时直接覆盖。
           if (local.syncStatus == 0) {
-            local.syncStatus = 2;
-            await local.save();
-          } else {
-            await box.put(id, _expenseFromServer(map));
+            debugPrint('Sync: local expense $id loses LWW (local=${local.updatedAt}, server=$serverTs), server version applied');
           }
+          await box.put(id, _expenseFromServer(map));
         }
       }
       cursor = data['hasMore'] == true && data['nextCursor'] != null ? '${data['nextCursor']}' : null;

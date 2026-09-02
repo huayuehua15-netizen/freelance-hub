@@ -253,12 +253,22 @@ class AuthProvider extends ChangeNotifier {
     );
     CurrencyFormat.current = _user!.currency;
     await _persistSession();
-    // 注册后台同步任务：登录成功后立刻注册，确保未同步数据在系统调度窗口内
-    // 自动同步到云端。用 keep 策略，重复注册不会抛错。
-    try {
-      await BackgroundTaskService.registerBackgroundSync();
-    } catch (e) {
-      debugPrint('registerBackgroundSync on login failed: $e');
+    // 先把服务端权益应用到 PremiumProvider，再据其决定是否注册后台同步：
+    // 云端同步是 Annual 专属权益，Monthly/Free 用户注册了也只会每 15 分钟
+    // 空转重试一次被后端拒绝的 batch-upsert。
+    _premiumProvider?.applyServerEntitlement(
+      premiumType: premiumType,
+      expireTime: _user!.expireTime,
+      trialEndTime: _user!.trialEndTime,
+    );
+    if (_premiumProvider?.canCloudSync ?? false) {
+      // 注册后台同步任务：登录成功后立刻注册，确保未同步数据在系统调度窗口内
+      // 自动同步到云端。用 keep 策略，重复注册不会抛错。
+      try {
+        await BackgroundTaskService.registerBackgroundSync();
+      } catch (e) {
+        debugPrint('registerBackgroundSync on login failed: $e');
+      }
     }
     notifyListeners();
   }

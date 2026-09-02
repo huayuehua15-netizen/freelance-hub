@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/expense_log.dart';
 import '../models/tax_category.dart';
 import '../services/hive_service.dart';
+import '../utils/currency_format.dart';
 
 class ExpenseProvider extends ChangeNotifier {
   List<ExpenseLog> _expenses = [];
@@ -48,7 +49,7 @@ class ExpenseProvider extends ChangeNotifier {
     String merchant = '',
     String note = '',
     bool? isTaxDeductible,
-    String currency = 'USD',
+    String? currency,
     String receiptUrl = '',
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -68,7 +69,7 @@ class ExpenseProvider extends ChangeNotifier {
       expenseId: const Uuid().v4(),
       projectId: projectId,
       amount: amount,
-      currency: currency,
+      currency: currency ?? CurrencyFormat.current,
       expenseDate: expenseDate,
       category: category,
       isTaxDeductible: effectiveDeductible,

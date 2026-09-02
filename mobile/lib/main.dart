@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'app.dart';
 import 'config/app_config.dart';
 import 'services/background_task_service.dart';
+import 'utils/error_reporter.dart';
 
 void main() async {
   // 确保 WidgetsBinding 初始化完成后再调用原生插件。
@@ -25,7 +27,25 @@ void main() async {
   }
 
   await BackgroundTaskService.initialize();
-  runApp(const FreelanceHubApp());
+
+  // 崩溃上报：DSN 构建期注入，未注入则完全不启用（无网络/无账号负担）。
+  // appRunner 里的未捕获异常与 FlutterError 由 Sentry SDK 自动捕获。
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+  if (sentryDsn.isEmpty) {
+    runApp(const FreelanceHubApp());
+    return;
+  }
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.environment = AppConfig.environment;
+      // 只收崩溃与错误，不开性能采样（省配额、少一份隐私面）。
+      options.tracesSampleRate = 0;
+      options.sendDefaultPii = false;
+    },
+    appRunner: () => runApp(const FreelanceHubApp()),
+  );
+  ErrorReporter.configure();
 }
 
 /// 配置错误时的兜底界面：不依赖任何服务初始化，避免错误雪崩。

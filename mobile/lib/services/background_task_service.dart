@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
@@ -10,6 +12,7 @@ import 'api_service.dart';
 import 'hive_service.dart';
 import 'notification_service.dart';
 import 'sync_service.dart';
+import '../utils/error_reporter.dart';
 
 // kDebugMode 仅用于 callbackDispatcher 的 debugPrint，保留 import。
 
@@ -109,6 +112,7 @@ void callbackDispatcher() {
       // 不向上抛：workmanager 把异常视为任务失败会指数退避重试，
       // 对「网络偶发失败」的同步任务反而放大电量消耗。
       debugPrint('background task $taskName failed: $e\n$st');
+      unawaited(ErrorReporter.report(e, st, 'background:$taskName'));
     }
     return true;
   });
@@ -129,14 +133,17 @@ Future<void> _ensureBackgroundIsolateReady() async {
   _bgIsolateReady = true;
 }
 
-/// 后台同步：仅当存在登录用户时执行。
-/// SyncService 内部对 syncing 状态做了重入保护，重复触发是安全的。
+/// 后台同步：仅当存在登录用户且其权益为 Annual 时执行。
+/// 云端同步是 Annual 权益：注册任务时已按权益门控，这里再核一遍
+/// prefs 里的 premiumType——用户在设备保持注册期间被降级
+/// （webhook 到期/取消）时，避免每 15 分钟打一次注定 403 的同步。
 Future<void> _runBackgroundSync() async {
-  final userId = await _readActiveUserId();
-  if (userId == null) return;
+  final user = await _readActiveUser();
+  if (user == null) return;
+  if (user.premiumType != 'annual') return;
   final syncService = SyncService();
   // 网络不可达时 Dio 会抛出，syncAll 内部已 try/catch 并将状态置为 failed。
-  await syncService.syncAll(userId: userId);
+  await syncService.syncAll(userId: user.userId);
 }
 
 /// 计时提醒：仅当存在 running 状态的计时 + 当前时间在 19:00–22:30 窗口内时触发。
@@ -180,21 +187,21 @@ Future<void> _runTimerReminder() async {
   await box.put(reminderKey, true);
 }
 
-/// 从 SharedPreferences 中读取已登录用户的 userId。
+/// 从 SharedPreferences 中读取已登录用户。
 ///
 /// 设计：登录后 [AuthProvider._applySession] / [_persistSession] 会把 UserInfo
 /// 序列化为 JSON 写入 `prefs.auth_user`，token 写入 flutter_secure_storage。
 /// 这里只读 prefs（轻量、同步可缓存），不依赖 AuthProvider 实例是否已就绪。
 ///
 /// 游客（未登录）的 prefs 中没有 `auth_user` 键，返回 null 跳过同步。
-Future<String?> _readActiveUserId() async {
+Future<UserInfo?> _readActiveUser() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('auth_user');
     if (json == null || json.isEmpty) return null;
     final user = UserInfo.fromJson(jsonDecode(json) as Map<String, dynamic>);
     if (user.userId.isEmpty || user.userId == 'local_user') return null;
-    return user.userId;
+    return user;
   } catch (_) {
     return null;
   }
