@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const config = require('./env');
+const logger = require('../utils/logger');
 
 const connectDB = async () => {
   try {
@@ -8,10 +9,10 @@ const connectDB = async () => {
       // Atlas 首连包含 TCP+TLS+认证握手，5s 在弱网/VPN 下会误判失败。
       serverSelectionTimeoutMS: 30000,
     });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
-    console.error(`MongoDB connection error: ${error.message}`);
+    logger.error(`MongoDB connection error: ${error.message}`);
     process.exit(1);
   }
 };

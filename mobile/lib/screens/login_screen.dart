@@ -7,6 +7,7 @@ import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/sync_service.dart';
+import '../services/tax_category_sync_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -240,6 +241,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (premium.canCloudSync && user != null) {
         unawaited(SyncService().syncAll(userId: user.userId));
       }
+      // 登录后合并云端自定义税务类目（任何登录用户可拉取），失败静默
+      unawaited(TaxCategorySyncService.pullAndMerge());
       if (mounted) Navigator.pushReplacementNamed(context, '/dashboard');
     } catch (e) {
       String msg;

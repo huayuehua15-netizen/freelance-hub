@@ -18,6 +18,7 @@ import 'services/api_service.dart';
 import 'services/notification_service.dart';
 import 'services/demo_data_seeder.dart';
 import 'services/sync_service.dart';
+import 'services/tax_category_sync_service.dart';
 import 'utils/error_reporter.dart';
 
 class FreelanceHubApp extends StatefulWidget {
@@ -83,6 +84,12 @@ class _FreelanceHubAppState extends State<FreelanceHubApp> {
     });
     await safeStep('notificationPermission', () => NotificationService.requestPermission());
     await safeStep('expiryReminder', () => _premiumProvider.checkExpiryReminder());
+    // 自定义税务类目云端合并（B5）：已登录用户拉取本人在 Web 端/其它设备
+    // 创建的自定义类目（系统默认本地已播种，只合并 isCustom）。任何登录
+    // 用户可拉取（list 不限 Annual），失败静默不影响启动。
+    if (_authProvider.isLoggedIn) {
+      await safeStep('taxCategoryMerge', () => TaxCategorySyncService.pullAndMerge());
+    }
     // 注册后台同步任务：仅登录且 Annual 用户需要（云端同步是 Annual 权益，
     // 后端也会拒绝非 Annual 的 batch-upsert，注册了只会永久空转重试）。
     // 用 keep 策略，重复注册不会抛错。

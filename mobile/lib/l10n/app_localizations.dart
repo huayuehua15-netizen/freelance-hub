@@ -99,7 +99,7 @@ class AppLocalizations {
     'deleteAccountGracePeriod':
         'All your data will be permanently removed after a 30-day grace period.',
     'deleteAccountRestore':
-        'To restore your account during the 30-day period, you must contact support@freelancehub.app. This action cannot be undone from the app.',
+        'To restore your account during the 30-day period, you must contact huayuehua15@gmail.com. This action cannot be undone from the app.',
     'typeDeleteToConfirm': 'Type DELETE to confirm:',
     'deleteAccountPasswordLabel': 'Confirm your password:',
     'errors.deleteAccountFailed': 'Failed to delete account: {error}',
@@ -233,6 +233,8 @@ class AppLocalizations {
     'editExpense': 'Edit Expense',
     'saveExpense': 'Save Expense',
     'expenseDeleted': 'Expense deleted',
+    'deleteExpense': 'Delete expense?',
+    'deleteExpenseConfirm': 'This removes the expense from your records. You can undo right after deleting.',
     'expenseSaved': 'Expense saved',
     'deleteNExpensesConfirm': 'Delete {n} expense(s)?',
     'softDeleteExpensesHint': 'Expenses will be soft-deleted and hidden from lists.',
@@ -374,7 +376,7 @@ class AppLocalizations {
         'Yes — manage your subscription anytime in Settings → Subscription.',
     'faq.dataBackup.q': 'Is my data backed up?',
     'faq.dataBackup.a': 'Cloud Sync is available with the Annual (Contractor) plan.',
-    'legalLastUpdated': 'Last updated: August 16, 2026. Questions? Contact privacy@freelancehub.app',
+    'legalLastUpdated': 'Last updated: August 16, 2026. Questions? Contact huayuehua15@gmail.com',
     // 隐私政策章节
     'privacy.section1Title': '1. Information We Collect',
     'privacy.section1Body': 'Account information: your email address, display name, currency and time zone preferences. Business records you create: client names and emails, project names, hourly rates, time logs, expense records (amounts, merchants, categories, notes) and receipt photos stored on your device. Technical data: a randomly generated device identifier used for multi-device sync, and anonymous crash/performance diagnostics if enabled. We never collect your precise location, contacts, or payment card details - purchases are processed entirely by Google Play and RevenueCat.',
@@ -395,7 +397,7 @@ class AppLocalizations {
     'privacy.section9Title': '9. Children\u2019s Privacy',
     'privacy.section9Body': 'The service is directed at working adults and is not intended for children under 13 (16 in the EEA). We do not knowingly collect data from children.',
     'privacy.section10Title': '10. Changes to This Policy',
-    'privacy.section10Body': 'We will notify you of material changes to this policy in-app before they take effect. Contact us at privacy@freelancehub.app.',
+    'privacy.section10Body': 'We will notify you of material changes to this policy in-app before they take effect. Contact us at huayuehua15@gmail.com.',
     // 服务条款章节
     'terms.section1Title': '1. Acceptance of Terms',
     'terms.section1Body': 'By creating an account or using Freelance Hub you agree to these Terms. If you do not agree, do not use the service; you may use the app as a local-only guest without an account.',
@@ -416,7 +418,7 @@ class AppLocalizations {
     'terms.section9Title': '9. Governing Law',
     'terms.section9Body': 'To the maximum extent permitted by law, our liability for any claim relating to the service is limited to the amount you paid us in the twelve months before the claim. We are not liable for indirect or consequential damages, or for lost profits or data caused by reliance on generated reports.',
     'terms.section10Title': '10. Contact',
-    'terms.section10Body': 'We may update these Terms; material changes will be announced in-app. Continued use after the effective date constitutes acceptance. Contact support@freelancehub.app.',
+    'terms.section10Body': 'We may update these Terms; material changes will be announced in-app. Continued use after the effective date constitutes acceptance. Contact huayuehua15@gmail.com.',
     // 错误消息
     'errors.sessionExpired': 'Session expired, please sign in again',
     'errors.networkError': 'Network error, please check your connection',
@@ -442,7 +444,7 @@ class AppLocalizations {
     'deleteProjectHint':
         'This will permanently remove the project and its time logs/expenses from this device. Cloud copies are kept until you sign in and sync. This cannot be undone.',
     'timerReminderTitle': 'Timer still running',
-    'timerReminderBody': 'You have a timer running for "{project}". Tap to stop and save your work.',
+    'timerReminderBody': 'You have a timer running for "{project}". Open the app to stop and save your work.',
     'timerReminderChannelName': 'Timer Reminders',
     'timerReminderChannelDesc': 'Evening reminder to stop a forgotten timer',
     // 通知文案
@@ -458,6 +460,18 @@ class AppLocalizations {
     'notification.subscriptionExpiringBody':
         'Your Freelance Hub subscription expires soon. Renew to keep Premium features.',
     'purchaseCanceled': 'Purchase was canceled. You can try again anytime.',
+    'undo': 'Undo',
+    'errors.endBeforeStart': 'End time must be later than start time',
+    'taxcat.softwareSubscriptions': 'Software & Subscriptions',
+    'taxcat.officeSupplies': 'Office Supplies',
+    'taxcat.internetPhone': 'Internet & Phone',
+    'taxcat.hardwareEquipment': 'Hardware & Equipment',
+    'taxcat.travel': 'Travel',
+    'taxcat.educationTraining': 'Education & Training',
+    'taxcat.marketingAdvertising': 'Marketing & Advertising',
+    'taxcat.legalProfessional': 'Legal & Professional',
+    'taxcat.insurance': 'Insurance',
+    'taxcat.otherBusinessExpense': 'Other Business Expense',
   };
 
   static const Map<String, String> _zh = {
@@ -544,7 +558,7 @@ class AppLocalizations {
     'deleteAccount': '删除账号',
     'deleteAccountSchedule': '此操作将安排你的账号永久删除。',
     'deleteAccountGracePeriod': '所有数据将在 30 天宽限期后永久删除。',
-    'deleteAccountRestore': '在 30 天内恢复账号需联系 support@freelancehub.app。此操作无法在应用内撤销。',
+    'deleteAccountRestore': '在 30 天内恢复账号需联系 huayuehua15@gmail.com。此操作无法在应用内撤销。',
     'typeDeleteToConfirm': '请输入 DELETE 确认:',
     'deleteAccountPasswordLabel': '请输入密码确认身份:',
     'errors.deleteAccountFailed': '删除账号失败: {error}',
@@ -673,6 +687,8 @@ class AppLocalizations {
     'editExpense': '编辑开支',
     'saveExpense': '保存开支',
     'expenseDeleted': '开支已删除',
+    'deleteExpense': '删除这笔开支?',
+    'deleteExpenseConfirm': '该开支将从记录中移除。删除后可立即撤销。',
     'expenseSaved': '开支已保存',
     'deleteNExpensesConfirm': '删除 {n} 条开支?',
     'softDeleteExpensesHint': '开支将被软删除并从列表中隐藏。',
@@ -803,7 +819,7 @@ class AppLocalizations {
     'faq.cancelSubscription.a': '可以 — 在 设置 → 订阅 中随时管理你的订阅。',
     'faq.dataBackup.q': '我的数据有备份吗?',
     'faq.dataBackup.a': '云同步在年度版 (合同工) 套餐中提供。',
-    'legalLastUpdated': '最后更新: 2026 年 8 月 16 日。如有问题请联系 privacy@freelancehub.app',
+    'legalLastUpdated': '最后更新: 2026 年 8 月 16 日。如有问题请联系 huayuehua15@gmail.com',
     'privacy.section1Title': '1. 我们收集的信息',
     'privacy.section1Body': '账户信息:邮箱地址、显示名称、货币与时区偏好。你创建的业务记录:客户名称与邮箱、项目名称、时薪、工时记录、开支记录(金额、商家、类别、备注)及仅存储在你设备上的收据照片。技术数据:用于多设备同步的随机设备标识符,以及在你同意时收集的匿名崩溃/性能诊断。我们绝不收集你的精确位置、通讯录或银行卡信息——购买完全由 Google Play 与 RevenueCat 处理。',
     'privacy.section2Title': '2. 我们如何使用你的信息',
@@ -823,7 +839,7 @@ class AppLocalizations {
     'privacy.section9Title': '9. 儿童隐私',
     'privacy.section9Body': '本服务面向成年工作者,不面向 13 岁(欧洲经济区为 16 岁)以下儿童,我们不会有意收集儿童数据。',
     'privacy.section10Title': '10. 政策变更',
-    'privacy.section10Body': '重大变更将在生效前于应用内通知你。联系我们:privacy@freelancehub.app。',
+    'privacy.section10Body': '重大变更将在生效前于应用内通知你。联系我们:huayuehua15@gmail.com。',
     'terms.section1Title': '1. 条款接受',
     'terms.section1Body': '创建账户或使用 Freelance Hub 即表示你同意本条款。如不同意请勿使用;你也可以不注册账户、仅以游客身份本地使用。',
     'terms.section2Title': '2. 服务描述',
@@ -843,7 +859,7 @@ class AppLocalizations {
     'terms.section9Title': '9. 适用法律',
     'terms.section9Body': '在法律允许的最大范围内,我们对与服务相关的任何索赔的责任以索赔前十二个月内你向我们支付的金额为限。我们不对间接、后果性损害或因依赖生成的报表导致的利润或数据损失承担责任。',
     'terms.section10Title': '10. 联系方式',
-    'terms.section10Body': '我们可能更新本条款,重大变更将在应用内公告。生效日后继续使用即视为接受。联系 support@freelancehub.app。',
+    'terms.section10Body': '我们可能更新本条款,重大变更将在应用内公告。生效日后继续使用即视为接受。联系 huayuehua15@gmail.com。',
     'errors.sessionExpired': '会话已过期,请重新登录',
     'errors.networkError': '网络错误,请检查连接',
     'errors.permissionDenied': '权限不足',
@@ -868,7 +884,7 @@ class AppLocalizations {
     'deleteProjectHint':
         '将永久删除该项目及其工时/开支(仅本机)。云端副本在登录同步前会保留。此操作不可撤销。',
     'timerReminderTitle': '计时仍在运行',
-    'timerReminderBody': '你为「{project}」启动的计时仍在运行,点击停止并保存工时。',
+    'timerReminderBody': '你为「{project}」启动的计时仍在运行,打开应用停止并保存工时。',
     'timerReminderChannelName': '计时提醒',
     'timerReminderChannelDesc': '晚间提醒结束忘记停止的计时',
     // 通知文案
@@ -883,6 +899,18 @@ class AppLocalizations {
     'notification.subscriptionExpiringTitle': '订阅即将到期',
     'notification.subscriptionExpiringBody': '你的 Freelance Hub 订阅即将到期,续订以保留高级功能。',
     'purchaseCanceled': '购买已取消。可随时再次尝试。',
+    'undo': '撤销',
+    'errors.endBeforeStart': '结束时间必须晚于开始时间',
+    'taxcat.softwareSubscriptions': '软件与订阅',
+    'taxcat.officeSupplies': '办公用品',
+    'taxcat.internetPhone': '网络与通讯',
+    'taxcat.hardwareEquipment': '硬件设备',
+    'taxcat.travel': '差旅',
+    'taxcat.educationTraining': '教育与培训',
+    'taxcat.marketingAdvertising': '市场营销',
+    'taxcat.legalProfessional': '法务与专业服务',
+    'taxcat.insurance': '保险',
+    'taxcat.otherBusinessExpense': '其他业务开支',
   };
 
   static String t(String key) {

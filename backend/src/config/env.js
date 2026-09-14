@@ -48,7 +48,10 @@ module.exports = {
     port: parseInt(process.env.SMTP_PORT) || 587,
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.SMTP_FROM || 'Freelance Hub <no-reply@freelancehub.app>',
+    // 与 backend/.env 的实际发件地址保持一致（腾讯企业邮箱 + SMTP2GO）。
+    // 此前 fallback 指向不存在的 freelancehub.app 域名，一旦 .env 漏配
+    // 就会用不可投递的发件人发出验证/重置邮件。
+    from: process.env.SMTP_FROM || 'Freelance Hub <no-reply@ddntqts.cn>',
   },
   revenuecat: {
     webhookSecret: process.env.REVENUECAT_WEBHOOK_SECRET || 'dev_webhook_secret',

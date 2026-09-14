@@ -229,14 +229,21 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     });
   }
 
-  void _batchArchive(ProjectProvider provider) {
-    for (final id in _selectedIds.toList()) {
-      provider.archiveProject(id);
+  Future<void> _batchArchive(ProjectProvider provider) async {
+    // await 化：部分失败时给用户反馈，而不是静默吞掉
+    try {
+      await Future.wait(_selectedIds.map((id) => provider.archiveProject(id)));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.t('errors.unknown'))),
+        );
+      }
     }
     _exitSelectionMode();
   }
 
-  void _batchDelete(BuildContext context, ProjectProvider provider) {
+  Future<void> _batchDelete(BuildContext context, ProjectProvider provider) async {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -245,10 +252,16 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.t('cancel'))),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              for (final id in _selectedIds.toList()) {
-                provider.deleteProject(id);
+              try {
+                await Future.wait(_selectedIds.map((id) => provider.deleteProject(id)));
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.t('errors.unknown'))),
+                  );
+                }
               }
               _exitSelectionMode();
             },

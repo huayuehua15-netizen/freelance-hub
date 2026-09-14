@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/expense_log.dart';
+import '../models/tax_category.dart';
 import '../providers/expense_provider.dart';
 import '../providers/premium_provider.dart';
 import '../config/app_theme.dart';
@@ -121,7 +122,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 const SizedBox(width: 8),
                 if (_selectedCategory != null)
                   Chip(
-                    label: Text(_selectedCategory!, style: const TextStyle(fontSize: 12)),
+                    label: Text(TaxCategory.displayNameOf(_selectedCategory!), style: const TextStyle(fontSize: 12)),
                     onDeleted: () => setState(() => _selectedCategory = null),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -170,7 +171,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               },
             ),
             ...categories.map((c) => ListTile(
-                  title: Text(c),
+                  title: Text(TaxCategory.displayNameOf(c)),
                   trailing: _selectedCategory == c ? const Icon(Icons.check, color: AppTheme.primary) : null,
                   onTap: () {
                     setState(() => _selectedCategory = c);
@@ -183,9 +184,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
-  // 按日期分组展示（expenses 已按 expenseDate 倒序）
+  // 按日期分组展示（expenses 已按 expenseDate 倒序）。
+  // 预先展开为 header/item 扁平序列，用 ListView.builder 惰性构建：
+  // 此前的非 builder ListView 一次性实例化全部行，长列表（Annual 用户
+  // 全量历史）会拖慢首帧并放大内存占用。
   Widget _buildGroupedList(BuildContext context, List<ExpenseLog> expenses) {
-    final rows = <Widget>[];
+    final entries = <_GroupedRow>[];
     String? lastDateKey;
 
     for (final expense in expenses) {
@@ -193,27 +197,32 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
       if (key != lastDateKey) {
         lastDateKey = key;
-        rows.add(
-          Padding(
+        entries.add(_GroupedRow.header(key));
+      }
+      entries.add(_GroupedRow.item(expense));
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 88),
+      itemCount: entries.length,
+      itemBuilder: (context, index) {
+        final row = entries[index];
+        if (row.isHeader) {
+          return Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text(
-              key,
+              row.headerKey!,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.textSecondary,
               ),
             ),
-          ),
-        );
-      }
-      rows.add(_buildExpenseItem(context, expense));
-    }
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 88),
-      children: rows,
+          );
+        }
+        return _buildExpenseItem(context, row.expense!);
+      },
     );
   }
 
@@ -228,7 +237,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             value: _selectedIds.contains(expense.expenseId),
             onChanged: (_) => _toggleSelect(expense.expenseId),
           ),
-          title: Text(expense.category),
+          title: Text(TaxCategory.displayNameOf(expense.category)),
           subtitle: expense.merchant.isNotEmpty ? Text(expense.merchant) : null,
           trailing: Text(
             CurrencyFormat.money(expense.amount),
@@ -250,15 +259,38 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (_) async {
-        await expenseProvider.deleteExpense(expense.expenseId);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.t('expenseDeleted'))),
-          );
-        }
-        return true;
+        // 删除不可逆（软删后界面无恢复入口）：先二次确认，避免误滑丢数据
+        final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(AppLocalizations.t('deleteExpense')),
+                content: Text(AppLocalizations.t('deleteExpenseConfirm')),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.t('cancel'))),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(AppLocalizations.t('delete'), style: const TextStyle(color: AppTheme.danger)),
+                  ),
+                ],
+              ),
+            ) ??
+            false;
+        return confirmed;
       },
-      onDismissed: (_) {},
+      onDismissed: (_) async {
+        await expenseProvider.deleteExpense(expense.expenseId);
+        if (!context.mounted) return;
+        // 撤销入口：删除是软删，撤销即复位标记，误操作不再等同永久丢失
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.t('expenseDeleted')),
+            action: SnackBarAction(
+              label: AppLocalizations.t('undo'),
+              onPressed: () => expenseProvider.restoreExpense(expense.expenseId),
+            ),
+          ),
+        );
+      },
       child: Card(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: ListTile(
@@ -271,7 +303,7 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               color: expense.isTaxDeductible ? AppTheme.success : AppTheme.textSecondary,
             ),
           ),
-          title: Text(expense.category),
+          title: Text(TaxCategory.displayNameOf(expense.category)),
           subtitle: expense.merchant.isNotEmpty ? Text(expense.merchant) : null,
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -326,10 +358,20 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.t('cancel'))),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              for (final id in _selectedIds.toList()) {
-                provider.deleteExpense(id);
+              // await 化：部分失败时给用户反馈，而不是静默吞掉
+              try {
+                await Future.wait(_selectedIds.map((id) => provider.deleteExpense(id)));
+              } catch (e, st) {
+                // 记录根因（JSON 解析、磁盘、Hive box 锁、网络等）以便线上排查；
+                // 仅 debugPrint 不上报 Sentry：批量删除失败属于用户预期内的操作风险。
+                debugPrint('Batch delete expenses failed: $e\n$st');
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(AppLocalizations.t('errors.unknown'))),
+                  );
+                }
               }
               _exitSelectionMode();
             },
@@ -364,4 +406,17 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         return Icons.receipt_long_outlined;
     }
   }
+}
+
+/// 分组列表的扁平行模型：日期分组头或开支条目。
+class _GroupedRow {
+  final bool isHeader;
+  final String? headerKey;
+  final ExpenseLog? expense;
+
+  const _GroupedRow._(this.isHeader, this.headerKey, this.expense);
+
+  factory _GroupedRow.header(String key) => _GroupedRow._(true, key, null);
+
+  factory _GroupedRow.item(ExpenseLog e) => _GroupedRow._(false, null, e);
 }

@@ -9,12 +9,15 @@ class ProjectProvider extends ChangeNotifier {
   static const Uuid _uuid = Uuid();
   final PremiumProvider premiumProvider;
   List<ClientProject> _projects = [];
+  List<ClientProject> _activeProjectsCache = const [];
   bool _loading = false;
 
   ProjectProvider(this.premiumProvider);
 
-  List<ClientProject> get projects => _projects.where((p) => !p.isDeleted).toList();
-  List<ClientProject> get activeProjects => projects.where((p) => p.status == 'active').toList();
+  // _projects 在 loadProjects 时已完成 !isDeleted 过滤与排序（所有增删改
+  // 后都会调用），getter 直接返回缓存列表，消除每帧 O(n) 冗余拷贝。只读。
+  List<ClientProject> get projects => _projects;
+  List<ClientProject> get activeProjects => _activeProjectsCache;
   bool get loading => _loading;
   bool get hasReachedFreeLimit => !premiumProvider.isPremium && activeProjects.length >= 3;
 
@@ -25,6 +28,9 @@ class ProjectProvider extends ChangeNotifier {
       final box = HiveService.projectBoxInstance;
       _projects = box.values.where((p) => !p.isDeleted).toList()
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      // activeProjects 缓存：随 loadProjects 一并刷新，getter O(1)
+      _activeProjectsCache =
+          _projects.where((p) => p.status == 'active').toList();
     } finally {
       _loading = false;
       notifyListeners();

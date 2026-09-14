@@ -16,12 +16,15 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    DashboardScreen(),
-    TimerScreen(),
-    ProjectsScreen(),
-    ReportsEntryScreen(),
-  ];
+  // 不用 const 常驻列表：TimerScreen 需要感知"当前是否在前台"，
+  // 切到其它 Tab 时停掉每秒 ticker（耗电优化）。
+  // IndexedStack 仍保持 4 页 State 常驻，仅 widget 参数更新。
+  List<Widget> get _pages => [
+        const DashboardScreen(),
+        TimerScreen(active: _currentIndex == 1),
+        const ProjectsScreen(),
+        const ReportsEntryScreen(),
+      ];
 
   void _onTap(int index) => setState(() => _currentIndex = index);
 

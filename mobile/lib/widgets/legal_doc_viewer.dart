@@ -53,7 +53,7 @@ class LegalDocViewer extends StatelessWidget {
             style: const TextStyle(color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 24),
-          _contactRow(Icons.email_outlined, AppLocalizations.t('email'), 'support@freelancehub.app'),
+          _contactRow(Icons.email_outlined, AppLocalizations.t('email'), 'huayuehua15@gmail.com'),
           const SizedBox(height: 12),
           _contactRow(Icons.access_time, AppLocalizations.t('supportHoursLabel'), AppLocalizations.t('supportHoursValue')),
           const SizedBox(height: 32),

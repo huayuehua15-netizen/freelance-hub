@@ -160,6 +160,14 @@ class _TimeLogEditScreenState extends State<TimeLogEditScreen> {
   }
 
   Future<void> _save() async {
+    // 校验：结束必须晚于开始。旧逻辑会静默把 duration 存成 0h，
+    // 用户无从得知金额为何是 0，直接污染报表。
+    if (!_end.isAfter(_start)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.t('errors.endBeforeStart'))),
+      );
+      return;
+    }
     final provider = context.read<TimelogProvider>();
     final rate = context.read<ProjectProvider>().getProjectById(_projectId ?? '')?.hourlyRate ?? 0;
     final t = widget.timeLog;

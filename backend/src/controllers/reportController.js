@@ -70,12 +70,16 @@ const getAnnual = async (req, res, next) => {
   }
 };
 
+// 报表 PDF 金额符号：跟随账号货币（与 App 内报表一致），不再硬编码 $。
+const currencySymbol = (code) =>
+  ({ USD: '$', EUR: '€', GBP: '£', CNY: '¥', JPY: '¥', CAD: 'C$', AUD: 'A$' }[code] || '$');
+
 const exportPdf = async (req, res, next) => {
   try {
     const { type, year, month } = req.query;
     const PDFDocument = require('pdfkit');
 
-    const buildPdf = (report, title, filename) => new Promise((resolve, reject) => {
+    const buildPdf = (report, title, filename, symbol) => new Promise((resolve, reject) => {
       try {
         const chunks = [];
         const doc = new PDFDocument();
@@ -88,12 +92,12 @@ const exportPdf = async (req, res, next) => {
         doc.fontSize(14).text(`Period: ${report.period || report.year}`);
         doc.moveDown();
         doc.fontSize(12).text(`Total Billable Hours: ${report.totalBillableHours}h`);
-        doc.text(`Total Billable Amount: $${report.totalBillableAmount.toFixed(2)}`);
-        doc.text(`Total Expenses: $${report.totalExpenses.toFixed(2)}`);
-        doc.text(`Tax Deductible Expenses: $${report.taxDeductibleExpenses.toFixed(2)}`);
-        doc.text(`Net Income: $${report.netIncome.toFixed(2)}`);
+        doc.text(`Total Billable Amount: ${symbol}${report.totalBillableAmount.toFixed(2)}`);
+        doc.text(`Total Expenses: ${symbol}${report.totalExpenses.toFixed(2)}`);
+        doc.text(`Tax Deductible Expenses: ${symbol}${report.taxDeductibleExpenses.toFixed(2)}`);
+        doc.text(`Net Income: ${symbol}${report.netIncome.toFixed(2)}`);
         if (report.estimatedSelfEmploymentTax !== undefined) {
-          doc.text(`Estimated Self-Employment Tax: $${report.estimatedSelfEmploymentTax.toFixed(2)}`);
+          doc.text(`Estimated Self-Employment Tax: ${symbol}${report.estimatedSelfEmploymentTax.toFixed(2)}`);
           doc.moveDown();
           doc.fontSize(10).fillColor('red').text('DISCLAIMER: This report is for record-keeping purposes only and does not constitute tax advice.', { align: 'center' });
           doc.text('Please consult a certified tax professional for filing advice.', { align: 'center' });
@@ -108,29 +112,42 @@ const exportPdf = async (req, res, next) => {
     });
 
     if (type === 'monthly') {
-      const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
-      const monthNum = month == null ? new Date().getMonth() + 1 : Number.parseInt(month, 10);
+      const timezone = resolveTimezone(req);
+      // 默认年/月按用户时区（与 getMonthly 同口径）：UTC+13 用户本地月末
+      // 请求时，服务器 UTC 已跨月，会给错默认报表期间
+      const nowTz = nowInTz(timezone);
+      const yearNum = year == null ? nowTz.year : Number.parseInt(year, 10);
+      const monthNum = month == null ? nowTz.month : Number.parseInt(month, 10);
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100 || !Number.isInteger(monthNum) || monthNum < 1 || monthNum > 12) {
         return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearMonthRequired', req.lang), data: null, timestamp: Date.now() });
       }
-      const timezone = resolveTimezone(req);
       const report = await ReportService.getMonthlyReport(req.userId, yearNum, monthNum, null, timezone);
 
-      const pdfBuffer = await buildPdf(report, 'Freelance Hub Monthly Report', `monthly_report_${yearNum}_${monthNum}.pdf`);
+      // 显式从 req.user 提取货币：authMiddleware 会对 req.user 原地修改
+      // （订阅过期时改 premiumType/expireTime），意味着 req.user 是 Mongoose 文档
+      // 引用。若中间件链中任何一环对 req.user 做 .toObject() 或替换，
+      // 这里的 req.user?.currency 可能变成 undefined → PDF 退回默认 '$'。
+      // 提前取好局部变量解耦与 req.user 的引用关系。
+      const userCurrency = req.user?.currency ?? 'USD';
+      const symbol = currencySymbol(userCurrency);
+      const pdfBuffer = await buildPdf(report, 'Freelance Hub Monthly Report', `monthly_report_${yearNum}_${monthNum}.pdf`, symbol);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="monthly_report_${yearNum}_${monthNum}.pdf"`);
       return res.send(pdfBuffer);
     }
 
     if (type === 'annual') {
-      const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
+      const timezone = resolveTimezone(req);
+      const yearNum = year == null ? nowInTz(timezone).year : Number.parseInt(year, 10);
       if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
         return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearRequired', req.lang), data: null, timestamp: Date.now() });
       }
-      const timezone = resolveTimezone(req);
       const report = await ReportService.getAnnualReport(req.userId, yearNum, timezone);
 
-      const pdfBuffer = await buildPdf(report, 'Freelance Hub Annual Tax Summary', `annual_tax_summary_${yearNum}.pdf`);
+      // 同 monthly 分支：从 req.user 显式提取货币，避免依赖文档引用。
+      const userCurrency = req.user?.currency ?? 'USD';
+      const symbol = currencySymbol(userCurrency);
+      const pdfBuffer = await buildPdf(report, 'Freelance Hub Annual Tax Summary', `annual_tax_summary_${yearNum}.pdf`, symbol);
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="annual_tax_summary_${yearNum}.pdf"`);
       return res.send(pdfBuffer);

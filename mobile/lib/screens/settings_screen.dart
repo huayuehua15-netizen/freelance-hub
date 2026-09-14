@@ -154,7 +154,20 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.danger),
               title: Text(AppLocalizations.t('logout'), style: const TextStyle(color: AppTheme.danger)),
+              // 误触即登出会打断计时/同步状态，先确认（logoutConfirm 文案已存在）
               onTap: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(AppLocalizations.t('logout')),
+                    content: Text(AppLocalizations.t('logoutConfirm')),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.t('cancel'))),
+                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppLocalizations.t('confirm'))),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !context.mounted) return;
                 await auth.logout();
                 if (context.mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (r) => false);
               },

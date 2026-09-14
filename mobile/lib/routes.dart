@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
@@ -43,7 +44,11 @@ class AppRoutes {
       case projects:
         return MaterialPageRoute(builder: (_) => const ProjectsScreen());
       case projectDetail:
-        final projectId = routeSettings.arguments as String;
+        // 防御性转换：参数类型错误（如深链/调用方笔误）时不再抛 TypeError 崩溃，
+        // 降级为空 ID 走详情页自带的 projectNotFound 兜底界面。
+        final projectId = routeSettings.arguments is String
+            ? routeSettings.arguments as String
+            : '';
         return MaterialPageRoute(
           builder: (_) => ProjectDetailScreen(projectId: projectId),
         );
@@ -51,9 +56,20 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ExpenseScreen());
       case expenseForm:
         return MaterialPageRoute(
-          builder: (_) => ExpenseFormScreen(expense: routeSettings.arguments as ExpenseLog?),
+          builder: (_) => ExpenseFormScreen(
+            expense: routeSettings.arguments is ExpenseLog
+                ? routeSettings.arguments as ExpenseLog?
+                : null,
+          ),
         );
       case timeLogEdit:
+        if (routeSettings.arguments is! TimeLog) {
+          return MaterialPageRoute(
+            builder: (_) => Scaffold(
+              body: Center(child: Text(AppLocalizations.t('noData'))),
+            ),
+          );
+        }
         return MaterialPageRoute(
           builder: (_) => TimeLogEditScreen(timeLog: routeSettings.arguments as TimeLog),
         );

@@ -73,8 +73,28 @@ class DataExport {
         'isTaxDeductible': e.isTaxDeductible,
         'merchant': e.merchant,
         'note': e.note,
-        'receiptUrl': e.receiptUrl,
+        // 只导出文件名：完整路径会带出设备目录结构（隐私泄漏），
+        // 且本机绝对路径在其它设备上无意义。
+        // 进一步净化文件名：历史数据可能存了用户原始拍照名（极少），含
+        // Windows 非法字符 / 控制字符 / 首尾空格/点时会导致后续导入或分享场景
+        // （如通过邮件附件、网盘、zip 解压）失败。统一替换为下划线。
+        'receiptFile': e.receiptUrl.isEmpty
+            ? ''
+            : _sanitizeReceiptFilename(
+                e.receiptUrl.split(RegExp(r'[/\\]')).last,
+              ),
         'createdAt': e.createdAt,
         'updatedAt': e.updatedAt,
       };
+
+  /// 净化收据文件名：去掉控制字符、Windows 非法字符、首尾空格/点。
+  /// 空结果返回空串，与上游 isEmpty 判断保持一致。
+  static String _sanitizeReceiptFilename(String name) {
+    final cleaned = name
+        // 替换 Windows / 多数文件系统不允许的字符及控制字符为下划线
+        .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
+        // 去掉首尾空格和点（Windows 不允许以点结尾的文件名）
+        .replaceAll(RegExp(r'^[\s.]+|[\s.]+$'), '');
+    return cleaned;
+  }
 }

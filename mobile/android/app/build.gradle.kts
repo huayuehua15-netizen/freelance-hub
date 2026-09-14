@@ -49,12 +49,17 @@ android {
 
     buildTypes {
         release {
-            // 有 key.properties → 用 release 签名（上架必需）；否则回退 debug（仅本地测试）
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            // 上架包必须正式签名：key.properties 缺失时直接构建失败。
+            // 旧的"回退 debug 签名"策略风险极高——误上传 debug 签名的 AAB 后，
+            // Play App Signing 会永久绑定该密钥，后续无法更换。
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException(
+                    "Release build requires android/key.properties (signing config). " +
+                        "Debug-signed release artifacts must never be uploaded to Google Play. " +
+                        "See deploy/SECRETS.md / DEPLOY.md for setup."
+                )
             }
+            signingConfig = signingConfigs.getByName("release")
             // R8 代码压缩 + 资源压缩，减小 AAB 体积。Flutter 默认已启用 R8，
             // 这里显式声明并附加 proguard-rules.pro 以保留反射依赖。
             isMinifyEnabled = true

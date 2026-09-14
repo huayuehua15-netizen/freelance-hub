@@ -28,7 +28,9 @@ class TimelogProvider extends ChangeNotifier {
   int? get startTime => _startTime;
   String get currentTag => _currentTag;
   String get currentNote => _currentNote;
-  List<TimeLog> get timeLogs => _timeLogs.where((t) => !t.isDeleted).toList();
+  // _timeLogs 在 loadTimeLogs 时已完成 !isDeleted 过滤与排序（所有增删改
+  // 后都会调用），getter 直接返回缓存列表，消除每帧 O(n) 冗余拷贝。只读。
+  List<TimeLog> get timeLogs => _timeLogs;
 
   // 获取当前已运行时长（毫秒）
   int get currentElapsedMs {
@@ -219,9 +221,20 @@ class TimelogProvider extends ChangeNotifier {
         final now = DateTime.now().millisecondsSinceEpoch;
         final deadZoneMs = now - _startTime!;
         if (deadZoneMs > _recoverDeadZoneThresholdMs) {
-          _accumulatedDuration += 0; // accumulatedDuration 已是杀进程前真实累积，无需再加
+          // accumulatedDuration 已是杀进程前真实累积，无需再加
           _startTime = null;
+          // _sessionStartTime 必须同时清空：
+          // 1. 否则 stopAndSave 会用杀进程前几小时的"真实起点"作为 TimeLog.startTime，
+          //    生成一条"开始于 10:00、时长 1.5h、结束于 17:30"的空头记录；
+          // 2. 它已经从 Hive 恢复了原始值，但 Hive 是用户看不到的——只有 _startTime 才是
+          //    "当前活跃段的起点"，与之配对的 _sessionStartTime 必须保持一致语义。
+          // 清空后 stopAndSave 的 `_sessionStartTime ?? endTime - totalMs` 兜底会基于
+          // 累积时长反推一个贴近 endTime 的起点，配合 paused→stop 是合理的。
+          _sessionStartTime = null;
           _timerState = TimerState.paused;
+          // 立即落盘：Hive 里仍是 running 的话，晚间提醒任务会照常触发
+          // （它读的是 Hive 而非内存），且再次被杀后会重复执行死区裁剪分支。
+          await _persistTimerState();
           await NotificationService.showTimerPaused();
         } else {
           await NotificationService.showTimerRunning(body: _currentNote);

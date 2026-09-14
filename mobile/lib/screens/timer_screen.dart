@@ -8,7 +8,12 @@ import '../l10n/app_localizations.dart';
 import '../utils/currency_format.dart';
 
 class TimerScreen extends StatefulWidget {
-  const TimerScreen({super.key});
+  /// 该页是否处于前台。MainScreen 用 IndexedStack 常驻 4 个 Tab，
+  /// 非当前页也必须收到通知，否则每秒 ticker 会在后台持续 setState 空转耗电。
+  final bool active;
+
+  const TimerScreen({super.key, this.active = true});
+
   @override
   State<TimerScreen> createState() => _TimerScreenState();
 }
@@ -16,13 +21,28 @@ class TimerScreen extends StatefulWidget {
 class _TimerScreenState extends State<TimerScreen> {
   Timer? _ticker;
 
+  void _syncTicker() {
+    if (widget.active) {
+      // 每秒刷新UI，让计时器数字实时跳动
+      _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      _ticker?.cancel();
+      _ticker = null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    // 每秒刷新UI，让计时器数字实时跳动
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
+    _syncTicker();
+  }
+
+  @override
+  void didUpdateWidget(covariant TimerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active) _syncTicker();
   }
 
   @override
@@ -134,19 +154,15 @@ class _TimerScreenState extends State<TimerScreen> {
   }
 
   Widget _buildTagAndNote(TimelogProvider timer) {
-    return Column(
-      children: [
-        TextField(
-          decoration: InputDecoration(labelText: AppLocalizations.t('tagPlaceholder')),
-          onChanged: timer.setTag,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          decoration: InputDecoration(labelText: AppLocalizations.t('note')),
-          onChanged: timer.setNote,
-          maxLines: 2,
-        ),
-      ],
+    return _TagNoteFields(
+      // key 绑定计时会话起点：进程被杀后恢复的计时会重建输入框，
+      // 把 provider 中已恢复的 tag/note 回填（此前恢复后输入框是空的，
+      // 用户一输入就把恢复值覆盖掉）。
+      key: ValueKey('tag_note_${timer.startTime ?? 0}'),
+      initialTag: timer.currentTag,
+      initialNote: timer.currentNote,
+      onTagChanged: timer.setTag,
+      onNoteChanged: timer.setNote,
     );
   }
 
@@ -249,5 +265,67 @@ class _TimerScreenState extends State<TimerScreen> {
     if (discard == true) {
       await timerProvider.cancelTimer();
     }
+  }
+}
+
+/// 计时中的标签/备注输入。
+///
+/// 独立组件 + 有状态：输入框需要自己的 TextEditingController 才能在
+/// 计时恢复（App 被杀后重开）时回填 provider 中已恢复的值；内容变化
+/// 同步回 provider，保证进程被杀时 _persistTimerState 能存到最新值。
+class _TagNoteFields extends StatefulWidget {
+  final String initialTag;
+  final String initialNote;
+  final ValueChanged<String> onTagChanged;
+  final ValueChanged<String> onNoteChanged;
+
+  const _TagNoteFields({
+    super.key,
+    required this.initialTag,
+    required this.initialNote,
+    required this.onTagChanged,
+    required this.onNoteChanged,
+  });
+
+  @override
+  State<_TagNoteFields> createState() => _TagNoteFieldsState();
+}
+
+class _TagNoteFieldsState extends State<_TagNoteFields> {
+  late final TextEditingController _tagController;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tagController = TextEditingController(text: widget.initialTag);
+    _noteController = TextEditingController(text: widget.initialNote);
+  }
+
+  @override
+  void dispose() {
+    _tagController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextField(
+          controller: _tagController,
+          decoration: InputDecoration(labelText: AppLocalizations.t('tagPlaceholder')),
+          onChanged: widget.onTagChanged,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _noteController,
+          decoration: InputDecoration(labelText: AppLocalizations.t('note')),
+          onChanged: widget.onNoteChanged,
+          maxLines: 2,
+        ),
+      ],
+    );
   }
 }

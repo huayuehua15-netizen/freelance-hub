@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import '../l10n/app_localizations.dart';
+
 part 'tax_category.g.dart';
 
 @HiveType(typeId: 4)
@@ -30,6 +32,30 @@ class TaxCategory extends HiveObject {
     required this.sortOrder,
     required this.createdAt,
   });
+
+  // 默认类目英文名 → l10n key。存储与按名称匹配逻辑一律用英文名（不变），
+  // 仅显示层经 [displayNameOf] 本地化；自定义类目不在表内，显示原名。
+  static const Map<String, String> _displayKeyByEnglishName = {
+    'Software & Subscriptions': 'taxcat.softwareSubscriptions',
+    'Office Supplies': 'taxcat.officeSupplies',
+    'Internet & Phone': 'taxcat.internetPhone',
+    'Hardware & Equipment': 'taxcat.hardwareEquipment',
+    'Travel': 'taxcat.travel',
+    'Education & Training': 'taxcat.educationTraining',
+    'Marketing & Advertising': 'taxcat.marketingAdvertising',
+    'Legal & Professional': 'taxcat.legalProfessional',
+    'Insurance': 'taxcat.insurance',
+    'Other Business Expense': 'taxcat.otherBusinessExpense',
+  };
+
+  /// 本实例的显示名（默认类目按当前语言，自定义类目显示用户输入原名）。
+  String get displayName => displayNameOf(name);
+
+  /// 任意类目名（存储名）的显示名。
+  static String displayNameOf(String storedName) {
+    final key = _displayKeyByEnglishName[storedName];
+    return key == null ? storedName : AppLocalizations.t(key);
+  }
 
   static List<TaxCategory> getDefaultCategories() {
     final now = DateTime.now().millisecondsSinceEpoch;

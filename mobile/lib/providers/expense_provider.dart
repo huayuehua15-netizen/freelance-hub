@@ -9,7 +9,10 @@ class ExpenseProvider extends ChangeNotifier {
   List<ExpenseLog> _expenses = [];
   bool _loading = false;
 
-  List<ExpenseLog> get expenses => _expenses.where((e) => !e.isDeleted).toList();
+  // _expenses 在 loadExpenses 时已完成 !isDeleted 过滤与排序（所有增删改
+  // 后都会调用），getter 直接返回缓存列表：此前每次访问都再跑一遍 O(n)
+  // where+toList，build 中频繁 watch 时是纯浪费。调用方视为只读。
+  List<ExpenseLog> get expenses => _expenses;
   bool get loading => _loading;
 
   double get totalThisMonth {
@@ -113,6 +116,20 @@ class ExpenseProvider extends ChangeNotifier {
     final expense = box.get(expenseId);
     if (expense != null) {
       expense.isDeleted = true;
+      expense.syncStatus = 0;
+      expense.updatedAt = DateTime.now().millisecondsSinceEpoch;
+      await expense.save();
+    }
+    await loadExpenses();
+  }
+
+  /// 撤销删除（配合列表 SnackBar 的撤销动作）。
+  /// 删除是软删，这里把标记复位并重新排队同步即可，数据不会丢。
+  Future<void> restoreExpense(String expenseId) async {
+    final box = HiveService.expenseBoxInstance;
+    final expense = box.get(expenseId);
+    if (expense != null) {
+      expense.isDeleted = false;
       expense.syncStatus = 0;
       expense.updatedAt = DateTime.now().millisecondsSinceEpoch;
       await expense.save();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,10 +8,12 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/expense_log.dart';
 import '../models/tax_category.dart';
+import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/premium_provider.dart';
 import '../providers/project_provider.dart';
 import '../services/hive_service.dart';
+import '../services/tax_category_sync_service.dart';
 import '../config/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/currency_format.dart';
@@ -72,11 +75,12 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
 
     // 崩溃防御：编辑记录的类目可能来自已被删除的自定义类目 —— 下拉框的
     // initialValue 必须能在 items 中找到，否则断言崩溃/静默丢值。
+    // 显示名经 TaxCategory.displayNameOf 本地化（存储值仍为英文名）。
     final categoryNames = categories.map((c) => c.name).toSet();
     final categoryItems = <DropdownMenuItem<String>>[
-      ...categories.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))),
+      ...categories.map((c) => DropdownMenuItem(value: c.name, child: Text(c.displayName))),
       if (!categoryNames.contains(_selectedCategory))
-        DropdownMenuItem(value: _selectedCategory, child: Text(_selectedCategory)),
+        DropdownMenuItem(value: _selectedCategory, child: Text(TaxCategory.displayNameOf(_selectedCategory))),
     ];
 
     // 同理：编辑关联了已归档项目的开支时，activeProjects 不含该项目，
@@ -368,7 +372,27 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                     sortOrder: 100 + HiveService.taxCategoryBoxInstance.length,
                     createdAt: DateTime.now().millisecondsSinceEpoch,
                   );
-                  await HiveService.taxCategoryBoxInstance.put(category.categoryId, category);
+                  // 在 await 前取好引用，避免 async 间隙使用 BuildContext
+                  final auth = context.read<AuthProvider>();
+                  try {
+                    await HiveService.taxCategoryBoxInstance.put(category.categoryId, category);
+                  } catch (e, st) {
+                    // Hive 写入失败（磁盘满、box 锁、权限等）：不能让 sheet 静默卡住，
+                    // 也要给用户明确提示——类目尚未创建，不应进入"已选中新类目"的 UI 状态。
+                    debugPrint('Failed to save tax category locally: $e\n$st');
+                    if (sheetContext.mounted) Navigator.of(sheetContext).pop();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(AppLocalizations.t('errors.unknown'))),
+                      );
+                    }
+                    return;
+                  }
+                  // 已登录则同步到云端（跨设备可用）：非阻断，失败不影响本地创建。
+                  // POST /tax-category 需要 Annual，403（Free/Monthly）会被静默吞掉。
+                  if (auth.isLoggedIn) {
+                    unawaited(TaxCategorySyncService.pushLocalCategory(category));
+                  }
                   if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                   if (mounted) {
                     setState(() {

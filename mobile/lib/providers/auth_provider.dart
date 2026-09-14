@@ -37,7 +37,9 @@ class AuthProvider extends ChangeNotifier {
 
   static const _kAccess = 'auth_access_token';
   static const _kRefresh = 'auth_refresh_token';
-  static const _kUser = 'auth_user';
+  // 公开常量：background_task_service 在独立 isolate 中读取已登录用户，
+  // 必须与这里持久化的 key 完全一致；改为公开可避免硬编码漂移。
+  static const String userPrefsKey = 'auth_user';
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   Future<void> login(String email, String password) async {
@@ -139,7 +141,7 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       var access = await _secureStorage.read(key: _kAccess);
       var refresh = await _secureStorage.read(key: _kRefresh);
-      final userJson = prefs.getString(_kUser);
+      final userJson = prefs.getString(userPrefsKey);
 
       // One-time migration from older builds that stored bearer tokens in
       // SharedPreferences (plaintext on many Android devices).
@@ -285,7 +287,7 @@ class AuthProvider extends ChangeNotifier {
     } else {
       await _secureStorage.write(key: _kRefresh, value: _refreshToken);
     }
-    await prefs.setString(_kUser, jsonEncode(_user?.toJson() ?? {}));
+    await prefs.setString(userPrefsKey, jsonEncode(_user?.toJson() ?? {}));
   }
 
   Future<void> _persistTokens() async {
@@ -308,6 +310,6 @@ class AuthProvider extends ChangeNotifier {
     // Clean up any old plaintext tokens as well.
     await prefs.remove(_kAccess);
     await prefs.remove(_kRefresh);
-    await prefs.remove(_kUser);
+    await prefs.remove(userPrefsKey);
   }
 }

@@ -124,12 +124,12 @@
               <li><strong>Right to opt-out of sale:</strong> We do not sell your personal information, so no opt-out is necessary. This statement serves as our "Do Not Sell My Personal Information" declaration.</li>
               <li><strong>Right to non-discrimination:</strong> We will not discriminate against you for exercising any of these rights.</li>
             </ul>
-            <p>To exercise any of these rights, contact us at <a href="mailto:privacy@freelancehub.app">privacy@freelancehub.app</a>. We will respond within 30 days (GDPR) or 45 days (CCPA).</p>
+            <p>To exercise any of these rights, contact us at <a href="mailto:huayuehua15@gmail.com">huayuehua15@gmail.com</a>. We will respond within 30 days (GDPR) or 45 days (CCPA).</p>
           </section>
 
           <section>
             <h2>9. Cookies and Local Storage</h2>
-            <p>The mobile app does not use cookies. The web dashboard uses browser <strong>localStorage</strong> to store your authentication token and language preference so you remain logged in across page reloads. This data never leaves your browser except to authenticate API requests. We do not use tracking cookies, advertising cookies, or third-party analytics cookies.</p>
+            <p>The mobile app does not use cookies. The web dashboard uses browser <strong>sessionStorage</strong> to store your authentication token and language preference so you remain logged in within the active browser session. This data is cleared automatically when you close the tab/window and never leaves your browser except to authenticate API requests. We do not use tracking cookies, advertising cookies, or third-party analytics cookies.</p>
           </section>
 
           <section>
@@ -151,7 +151,7 @@
             <h2>13. Contact Us</h2>
             <p>If you have questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact us:</p>
             <ul>
-              <li>Email: <a href="mailto:privacy@freelancehub.app">privacy@freelancehub.app</a></li>
+              <li>Email: <a href="mailto:huayuehua15@gmail.com">huayuehua15@gmail.com</a></li>
               <li>Subject line: "Privacy Policy Inquiry"</li>
             </ul>
             <p>We are committed to resolving your privacy concerns promptly and transparently.</p>
@@ -256,12 +256,12 @@
               <li><strong>选择不出售权：</strong>我们不出售您的个人信息，因此无需选择退出。本声明即作为我们的"请勿出售我的个人信息"声明。</li>
               <li><strong>不受歧视权：</strong>我们不会因您行使上述任何权利而歧视您。</li>
             </ul>
-            <p>如需行使上述任何权利，请通过 <a href="mailto:privacy@freelancehub.app">privacy@freelancehub.app</a> 联系我们。我们将在 30 天内（GDPR）或 45 天内（CCPA）回复。</p>
+            <p>如需行使上述任何权利，请通过 <a href="mailto:huayuehua15@gmail.com">huayuehua15@gmail.com</a> 联系我们。我们将在 30 天内（GDPR）或 45 天内（CCPA）回复。</p>
           </section>
 
           <section>
             <h2>9. Cookie 和本地存储</h2>
-            <p>移动应用不使用 Cookie。Web 仪表板使用浏览器 <strong>localStorage</strong> 存储您的身份验证令牌和语言偏好，以便您在页面刷新后保持登录状态。此数据除用于验证 API 请求外，绝不会离开您的浏览器。我们不使用跟踪 Cookie、广告 Cookie 或第三方分析 Cookie。</p>
+            <p>移动应用不使用 Cookie。Web 仪表板使用浏览器 <strong>sessionStorage</strong> 存储您的身份验证令牌和语言偏好，以便您在当前浏览器会话内保持登录状态。关闭标签页/窗口后该数据会自动清除，且除用于验证 API 请求外，绝不会离开您的浏览器。我们不使用跟踪 Cookie、广告 Cookie 或第三方分析 Cookie。</p>
           </section>
 
           <section>
@@ -283,7 +283,7 @@
             <h2>13. 联系我们</h2>
             <p>如果您对本隐私政策或您的个人数据有任何疑问、疑虑或请求，请通过以下方式联系我们：</p>
             <ul>
-              <li>邮箱：<a href="mailto:privacy@freelancehub.app">privacy@freelancehub.app</a></li>
+              <li>邮箱：<a href="mailto:huayuehua15@gmail.com">huayuehua15@gmail.com</a></li>
               <li>邮件主题："隐私政策咨询"</li>
             </ul>
             <p>我们致力于及时、透明地解决您的隐私关切。</p>

@@ -9,8 +9,9 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 8000;
 
 // 内存缓存：userId -> 下次允许调用 RC API 的时间戳
-// 仅缓存“何时再调 RC”，不缓存订阅状态本身——状态始终以本地 DB 为准（被 verifyAndSync 同步）
+// 仅缓存"何时再调 RC"，不缓存订阅状态本身——状态始终以本地 DB 为准（被 verifyAndSync 同步）
 const cache = new Map();
+let cacheWrites = 0;
 
 const isConfigured = () => {
   const key = config.revenuecat.apiKey;
@@ -149,6 +150,15 @@ const verifyAndSync = async (user, options = {}) => {
   }
 
   const now = Date.now();
+  // 顺带清理过期缓存键：Map 只增不删会让长跑进程内存缓慢增长（用户量
+  // 上来后每个 userId 都留一条）。清理本身 O(n)，但窗口期内 n 很小；
+  // 用"每 100 次写入触发一次"摊薄成本。
+  cacheWrites += 1;
+  if (cacheWrites % 100 === 0) {
+    for (const [uid, ts] of cache) {
+      if (now >= ts) cache.delete(uid);
+    }
+  }
   const nextAllowed = cache.get(user.userId) || 0;
   if (!options.force && now < nextAllowed) {
     return user; // 缓存窗口内，沿用本地

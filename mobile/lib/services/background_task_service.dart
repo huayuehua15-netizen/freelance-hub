@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show Locale;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import '../l10n/app_localizations.dart';
@@ -126,6 +127,12 @@ bool _bgIsolateReady = false;
 Future<void> _ensureBackgroundIsolateReady() async {
   if (_bgIsolateReady) return;
   await HiveService.init();
+  // 恢复语言偏好：AppLocalizations.current 是 per-isolate 静态状态，后台
+  // isolate 默认 'en'。不恢复的话，计时提醒通知对中文用户恒为英文。
+  final savedLocale = HiveService.configBoxInstance.get('locale');
+  if (savedLocale is String && savedLocale.isNotEmpty) {
+    AppLocalizations.current = Locale(savedLocale);
+  }
   await NotificationService.init();
   final auth = AuthProvider();
   await auth.loadFromStorage();
@@ -190,19 +197,26 @@ Future<void> _runTimerReminder() async {
 /// 从 SharedPreferences 中读取已登录用户。
 ///
 /// 设计：登录后 [AuthProvider._applySession] / [_persistSession] 会把 UserInfo
-/// 序列化为 JSON 写入 `prefs.auth_user`，token 写入 flutter_secure_storage。
+/// 序列化为 JSON 写入 `prefs[AuthProvider.userPrefsKey]`，token 写入 flutter_secure_storage。
 /// 这里只读 prefs（轻量、同步可缓存），不依赖 AuthProvider 实例是否已就绪。
 ///
-/// 游客（未登录）的 prefs 中没有 `auth_user` 键，返回 null 跳过同步。
+/// 游客（未登录）的 prefs 中没有该键，返回 null 跳过同步。
+///
+/// 注意：通过引用 [AuthProvider.userPrefsKey] 而不是硬编码字符串，
+/// 避免 AuthProvider 改名 key 时后台静默读取失败（曾经发生在 _kAccess/_kRefresh
+/// 的一次重命名中——硬编码副本让旧版后台 sync 跑了一年才被发现）。
 Future<UserInfo?> _readActiveUser() async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString('auth_user');
+    final json = prefs.getString(AuthProvider.userPrefsKey);
     if (json == null || json.isEmpty) return null;
     final user = UserInfo.fromJson(jsonDecode(json) as Map<String, dynamic>);
     if (user.userId.isEmpty || user.userId == 'local_user') return null;
     return user;
-  } catch (_) {
+  } catch (e, st) {
+    // 记录根因（SharedPreferences 不可用 / JSON 解析失败 / UserInfo schema 不匹配），
+    // 否则后台同步静默失败无任何线索可追。
+    debugPrint('Failed to read active user: $e\n$st');
     return null;
   }
 }

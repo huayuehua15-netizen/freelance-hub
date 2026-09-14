@@ -20,9 +20,18 @@
               type="password"
               show-password
               :placeholder="t('reset.confirmPasswordLabel')"
+              @keyup.enter="handleReset"
             />
           </el-form-item>
-          <el-button type="primary" :loading="loading" class="action-btn" @click="handleReset">
+          <!--
+            native-type="submit" 让按钮在 form 内触发原生 submit 事件，
+            配合 <el-form @submit.prevent="handleReset"> 实现：
+              - 用户在密码输入框按 Enter 直接提交
+              - 点击按钮也可提交（双重保险）
+            如果只保留 @click 而无 native-type，则 Enter 键不会触发提交
+            （浏览器只对 type=submit 的按钮触发 form submit）。
+          -->
+          <el-button type="primary" native-type="submit" :loading="loading" class="action-btn" @click="handleReset">
             {{ t('reset.submit') }}
           </el-button>
         </el-form>
