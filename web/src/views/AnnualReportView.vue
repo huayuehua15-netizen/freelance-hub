@@ -170,6 +170,10 @@ const renderCharts = () => {
   // 月度趋势：收入 vs 开支双 series 对比
   if (trendChartRef.value) {
     if (!trendChart) trendChart = echarts.init(trendChartRef.value)
+    // 容器是 v-show 门控的：实例可能在上个"无趋势数据"的年份里以 display:none
+    // 状态被 init（画布锁死 0×0）。setOption 只更新数据不重新测量容器，必须
+    // 主动 resize 才能在切到有数据的年份时按真实尺寸重绘，否则图表空白。
+    trendChart.resize()
     trendChart.setOption({
       tooltip: {
         trigger: 'axis',
@@ -214,6 +218,7 @@ const renderCharts = () => {
   const byCategory = d.byCategory || []
   if (categoryChartRef.value) {
     if (!categoryChart) categoryChart = echarts.init(categoryChartRef.value)
+    categoryChart.resize()
     categoryChart.setOption({
       tooltip: {
         trigger: 'item',

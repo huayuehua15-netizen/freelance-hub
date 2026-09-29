@@ -44,12 +44,18 @@ const authMiddleware = async (req, res, next) => {
     req.userId = user.userId;
     next();
   } catch (error) {
-    return res.status(401).json({
-      code: ERROR_CODES.UNAUTHORIZED,
-      msg: t('errors.auth.invalidToken', req.lang),
-      data: null,
-      timestamp: Date.now(),
-    });
+    // 只有 token 本身的问题才是 401。DB 瞬时故障（上面 findOne/save 因网络
+    // 抖动失败）必须走 5xx：客户端对 401 的处理是判定会话失效并登出，把
+    // 一次可恢复的网络抖动变成演示中途被踢下线。
+    if (error?.name === 'JsonWebTokenError' || error?.name === 'TokenExpiredError' || error?.name === 'NotBeforeError') {
+      return res.status(401).json({
+        code: ERROR_CODES.UNAUTHORIZED,
+        msg: t('errors.auth.invalidToken', req.lang),
+        data: null,
+        timestamp: Date.now(),
+      });
+    }
+    next(error);
   }
 };
 

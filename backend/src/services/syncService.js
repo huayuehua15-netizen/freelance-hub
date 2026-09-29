@@ -141,8 +141,19 @@ class SyncService {
       } catch (err) {
         // ordered:false：并发/重复插入的 E11000 只影响对应记录。
         // 极端情况下（同毫秒双端首建）标记 conflict 交由客户端重试拉取。
+        //
+        // ⚠️ 取失败记录 id 必须走驱动真实结构：mongodb 的 WriteError 把原始
+        // 操作文档放在 err.op 里（自身只有 err/index 两个自有属性），而
+        // mongoose 的 insertMany 又会用 { ...writeErrors[i] } 展开重建条目，
+        // 原型上的 getOperation 取不到、we.op 恒为 undefined。若按 we.op 取
+        // id，failedIds 会变成 {'undefined'}，失败插入被当成 created 返回，
+        // 客户端据此清掉重试标记 → 数据静默丢失且永不补传。
+        const opOf = (we) => we?.err?.op ?? we?.op ?? we?.getOperation?.();
         const failedIds = new Set(
-          (err?.writeErrors || []).map((we) => String(we?.op?.[idField])),
+          (err?.writeErrors || [])
+            .map((we) => opOf(we)?.[idField])
+            .filter((id) => id != null)
+            .map(String),
         );
         if (!err?.writeErrors?.length) throw err;
         for (let i = 0; i < results.length; i += 1) {
@@ -170,6 +181,20 @@ class SyncService {
           const current = afterMap.get(r[idField]);
           if (!meta || !current || r.status !== 'updated') continue;
           const serverTsNow = current.serverUpdateTime.getTime();
+          // 删除永远优先：删除 op 输掉乐观锁时不能按 clientTs 判冲突，
+          // 否则墓碑不再重发、记录在下次 pull 时"复活"，违反删除优先不变量。
+          if (meta.kind === 'delete') {
+            if (!current.isDeleted) {
+              await model.updateOne(
+                { userId, [idField]: r[idField], serverUpdateTime: current.serverUpdateTime },
+                { $set: { isDeleted: true, serverUpdateTime: now } },
+              );
+              r.serverUpdateTime = now.getTime();
+            } else {
+              r.serverUpdateTime = serverTsNow;
+            }
+            continue;
+          }
           if (serverTsNow !== now.getTime() && meta.clientTs < serverTsNow) {
             // 本批写入后又被并发覆盖，且并发者比客户端新 → 按冲突上报
             r.status = 'conflict';

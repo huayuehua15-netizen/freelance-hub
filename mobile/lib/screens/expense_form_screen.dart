@@ -156,8 +156,16 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                 }
                 setState(() {
                   _selectedCategory = v!;
-                  final cat = categories.firstWhere((c) => c.name == v);
-                  _isTaxDeductible = cat.isTaxDeductibleDefault;
+                  // 编辑记录的类目可能已被其它设备删除（上方注入的 fallback 项），
+                  // 重新选中该项时找不到匹配，不能抛异常——保持原抵扣开关不变。
+                  TaxCategory? cat;
+                  for (final c in categories) {
+                    if (c.name == v) {
+                      cat = c;
+                      break;
+                    }
+                  }
+                  if (cat != null) _isTaxDeductible = cat.isTaxDeductibleDefault;
                 });
               },
             ),

@@ -50,11 +50,30 @@ class TimelogProvider extends ChangeNotifier {
   void setTag(String tag) {
     _currentTag = tag;
     notifyListeners();
+    // 即时落盘：start/pause/resume 之外的输入路径只有这里。若不持久化，
+    // 用户输入 tag 后进程被杀，recoverTimer 恢复的是输入前的旧值，输入静默丢失。
+    _persistTimerState();
   }
 
   void setNote(String note) {
     _currentNote = note;
     notifyListeners();
+    _persistTimerState();
+  }
+
+  /// 刷新常驻通知栏：按当前计时状态显示 running/paused。
+  /// 失败必须吞掉——NotificationService.init 在启动容错链路里可能已降级，
+  /// show 抛错时若不拦截会跳过调用方后面的 notifyListeners，UI 不刷新。
+  Future<void> _refreshTimerNotification() async {
+    try {
+      if (_timerState == TimerState.running) {
+        await NotificationService.showTimerRunning(body: _currentNote);
+      } else if (_timerState == TimerState.paused) {
+        await NotificationService.showTimerPaused();
+      }
+    } catch (e) {
+      debugPrint('timer notification failed: $e');
+    }
   }
 
   Future<void> startTimer() async {
@@ -65,7 +84,7 @@ class TimelogProvider extends ChangeNotifier {
       _timerState = TimerState.running;
       await _persistTimerState();
       // 显示常驻通知；workmanager 前台服务保活仍为可选增强项
-      await NotificationService.showTimerRunning(body: _currentNote);
+      await _refreshTimerNotification();
       // 注册晚间提醒任务：系统在 19:00–22:30 窗口内调度，提醒用户停止并保存工时。
       // 失败不阻断计时启动——这只是辅助提醒，主流程已持久化到 Hive。
       try {
@@ -83,7 +102,7 @@ class TimelogProvider extends ChangeNotifier {
       _startTime = null;
       _timerState = TimerState.paused;
       await _persistTimerState();
-      await NotificationService.showTimerPaused();
+      await _refreshTimerNotification();
       notifyListeners();
     }
   }
@@ -93,7 +112,7 @@ class TimelogProvider extends ChangeNotifier {
       _startTime = DateTime.now().millisecondsSinceEpoch;
       _timerState = TimerState.running;
       await _persistTimerState();
-      await NotificationService.showTimerRunning(body: _currentNote);
+      await _refreshTimerNotification();
       notifyListeners();
     }
   }
@@ -235,12 +254,12 @@ class TimelogProvider extends ChangeNotifier {
           // 立即落盘：Hive 里仍是 running 的话，晚间提醒任务会照常触发
           // （它读的是 Hive 而非内存），且再次被杀后会重复执行死区裁剪分支。
           await _persistTimerState();
-          await NotificationService.showTimerPaused();
+          await _refreshTimerNotification();
         } else {
-          await NotificationService.showTimerRunning(body: _currentNote);
+          await _refreshTimerNotification();
         }
       } else if (_timerState == TimerState.paused) {
-        await NotificationService.showTimerPaused();
+        await _refreshTimerNotification();
       }
       notifyListeners();
     }

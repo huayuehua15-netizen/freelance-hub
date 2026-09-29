@@ -174,7 +174,14 @@ const chartCache = new Map()
 const getChart = (ref) => {
   if (!ref.value) return null
   if (!chartCache.has(ref)) chartCache.set(ref, echarts.init(ref.value))
-  return chartCache.get(ref)
+  const c = chartCache.get(ref)
+  // 图表容器由 v-show 控制（hasTrendData/hasCategoryData/hasProjectData），
+  // 而 renderCharts 在 watcher 里同步执行、早于 Vue 的 DOM 刷新：首次无数据
+  // 的图表会在 display:none 状态下被 init，ECharts 量到 0×0 并锁死画布，
+  // 之后 setOption 只更新数据不重新测量 → 切到有数据的年份图表仍是空白。
+  // nextTick 等 DOM 可见后再 resize，画布才会按真实尺寸重绘。
+  nextTick(() => c.resize())
+  return c
 }
 
 const money = (n) => fmtMoney(n, userCurrency())

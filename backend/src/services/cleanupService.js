@@ -23,14 +23,21 @@ async function purgeUserData(u) {
     const sessionOpt = session ? { session } : {};
     // 级联删除：项目 / 工时 / 开支 / 自定义税务类目 / 用户，按 userId 隔离
     // （TaxCategory 含用户自定义名称，属个人数据，GDPR Art.17 要求一并删除）
-    const results = await Promise.all([
-      ClientProject.deleteMany({ userId: u.userId }, sessionOpt),
-      TimeLog.deleteMany({ userId: u.userId }, sessionOpt),
-      ExpenseLog.deleteMany({ userId: u.userId }, sessionOpt),
-      TaxCategory.deleteMany({ userId: u.userId }, sessionOpt),
-      User.deleteOne({ userId: u.userId }, sessionOpt),
-    ]);
-    return results.reduce((sum, r) => sum + (r.deletedCount || 0), 0);
+    //
+    // ⚠️ 必须顺序执行：MongoDB 驱动明确禁止事务内并行操作（"Running
+    // operations in parallel is not supported during a transaction"），
+    // Promise.all 在副本集事务里会产生事务号冲突 → withTransaction 抛错 →
+    // 被外层 try/catch 吞掉 → 软删账号永不物理删除、邮箱永久占用唯一索引。
+    const models = [ClientProject, TimeLog, ExpenseLog, TaxCategory, User];
+    let total = 0;
+    for (const M of models) {
+      const isUserModel = M === User;
+      const res = isUserModel
+        ? await M.deleteOne({ userId: u.userId }, sessionOpt)
+        : await M.deleteMany({ userId: u.userId }, sessionOpt);
+      total += res.deletedCount || 0;
+    }
+    return total;
   };
 
   if (mongoose.connection.readyState === 1 && !isStandaloneServer()) {

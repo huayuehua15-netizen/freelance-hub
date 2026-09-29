@@ -42,12 +42,14 @@ class SyncService extends ChangeNotifier {
 
   /// 每台安装生成并持久化的设备 ID（用于多端识别/审计）。
   /// 不能用固定常量：同账号两台设备会互相干扰归属判断。
-  String get _deviceId {
+  /// 必须 await 落盘：fire-and-forget 的 put 在进程被杀前未刷盘，下次启动
+  /// 会生成新 id，设备标识每台安装不稳定，审计/归属判断失去意义。
+  Future<String> _deviceId() async {
     final box = HiveService.configBoxInstance;
     var id = box.get('device_id') as String?;
     if (id == null || id.isEmpty) {
       id = _uuid.v4();
-      box.put('device_id', id);
+      await box.put('device_id', id);
     }
     return id;
   }
@@ -126,7 +128,7 @@ class SyncService extends ChangeNotifier {
     if (dirty.isEmpty) return;
     final response = await _api.post('/project/batch-upsert', data: {
       'projects': dirty.map(_projectToJson).toList(),
-      'deviceId': _deviceId,
+      'deviceId': await _deviceId(),
     });
     await _applyPushResults(dirty, response, (p) => p.projectId);
   }
@@ -136,7 +138,7 @@ class SyncService extends ChangeNotifier {
     if (dirty.isEmpty) return;
     final response = await _api.post('/timelog/batch-upsert', data: {
       'timeLogs': dirty.map(_timeLogToJson).toList(),
-      'deviceId': _deviceId,
+      'deviceId': await _deviceId(),
     });
     await _applyPushResults(dirty, response, (t) => t.timeLogId);
   }
@@ -146,7 +148,7 @@ class SyncService extends ChangeNotifier {
     if (dirty.isEmpty) return;
     final response = await _api.post('/expense/batch-upsert', data: {
       'expenses': dirty.map(_expenseToJson).toList(),
-      'deviceId': _deviceId,
+      'deviceId': await _deviceId(),
     });
     await _applyPushResults(dirty, response, (e) => e.expenseId);
   }

@@ -180,13 +180,15 @@ const toCsv = (rows) => {
 const exportCsv = async (req, res, next) => {
   try {
     const { year } = req.query;
-    const yearNum = year == null ? new Date().getFullYear() : Number.parseInt(year, 10);
+    // 默认年份按用户时区算（与 getMonthly/getAnnual/PDF 同口径）：UTC+13 的用户
+    // 在本地 1 月 1 日导出时服务器还是去年最后一天，用服务器 UTC 会导出"空年度"。
+    const timezone = resolveTimezone(req);
+    const yearNum = year == null ? nowInTz(timezone).year : Number.parseInt(year, 10);
     if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 2100) {
       return res.status(400).json({ code: ERROR_CODES.BAD_REQUEST, msg: t('errors.report.yearRequired', req.lang), data: null, timestamp: Date.now() });
     }
 
     // 按用户时区计算年界，避免跨年工时/开支因 UTC 偏移被归错年度（税务导出必须准确）。
-    const timezone = resolveTimezone(req);
     const { start: startDate, end: endDate } = getYearBounds(yearNum, timezone);
     const [projects, timeLogs, expenses] = await Promise.all([
       ClientProject.find({ userId: req.userId, isDeleted: false }),

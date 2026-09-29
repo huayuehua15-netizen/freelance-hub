@@ -30,15 +30,19 @@
             :disabled="form.type === 'annual'"
             placement="top"
           >
-            <el-button
-              type="success"
-              plain
-              :loading="exporting === 'csv'"
-              :disabled="form.type === 'monthly'"
-              @click="handleExport('csv')"
-            >
-              {{ t('export.exportCsv') }}
-            </el-button>
+            <!-- 按钮禁用时浏览器不派发鼠标事件，tooltip 必须挂到外层 span 上
+                 才能悬浮提示"CSV 仅年度可用"，否则用户只看到一个灰按钮 -->
+            <span class="csv-button-wrapper">
+              <el-button
+                type="success"
+                plain
+                :loading="exporting === 'csv'"
+                :disabled="form.type === 'monthly'"
+                @click="handleExport('csv')"
+              >
+                {{ t('export.exportCsv') }}
+              </el-button>
+            </span>
           </el-tooltip>
         </el-form-item>
       </el-form>
@@ -205,11 +209,15 @@ const handleExport = async (format) => {
 const reExport = async (record) => {
   exporting.value = record.format
   try {
+    // 旧版本构建写入的历史记录（localStorage 持久化）可能没有 params 字段，
+    // 直接传 undefined 会让服务端回退到默认年份，导出错的年度。按记录自身
+    // 的 type/year/month 重建参数。
+    const params = record.params || { type: record.type, year: record.year, month: record.month }
     let blob
     if (record.format === 'pdf') {
-      blob = await reportApi.exportPdf(record.params)
+      blob = await reportApi.exportPdf(params)
     } else {
-      blob = await reportApi.exportCsv(record.params)
+      blob = await reportApi.exportCsv(params)
     }
     downloadBlob(blob, record.fileName)
     ElMessage.success(t('export.reExported'))

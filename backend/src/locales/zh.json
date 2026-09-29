@@ -48,6 +48,10 @@
       "yearRequired": "请输入有效的年份",
       "exportTypeInvalid": "导出类型无效，请使用 \"monthly\" 或 \"annual\""
     },
+    "taxCategory": {
+      "nameRequired": "请输入分类名称",
+      "notFound": "税务分类不存在"
+    },
     "rateLimit": {
       "authTooMany": "登录尝试次数过多，请稍后再试",
       "tooMany": "请求过于频繁，请稍后再试"

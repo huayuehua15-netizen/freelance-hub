@@ -88,12 +88,29 @@ const list = async (req, res, next) => {
     }
 
     const limitNum = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
-    if (cursor) query.serverUpdateTime = { $lt: new Date(parseInt(cursor)) };
+    // 复合游标 (serverUpdateTime, _id)，与 timelog/expense 的 list 同口径：
+    // batchUpsert 给同批记录写同一个 serverUpdateTime，纯时间戳游标在翻页时
+    // 会用 $lt 整批排除同毫秒的兄弟记录，导致项目永久丢失。
+    if (cursor) {
+      const [tsStr, idStr] = cursor.split('_');
+      const ts = parseInt(tsStr, 10);
+      if (idStr) {
+        query.$or = [
+          { serverUpdateTime: { $lt: new Date(ts) } },
+          { serverUpdateTime: new Date(ts), _id: { $lt: idStr } },
+        ];
+      } else {
+        query.serverUpdateTime = { $lt: new Date(ts) };
+      }
+    }
 
-    const projects = await ClientProject.find(query).sort({ serverUpdateTime: -1 }).limit(limitNum + 1);
+    const projects = await ClientProject.find(query)
+      .sort({ serverUpdateTime: -1, _id: -1 })
+      .limit(limitNum + 1);
     const hasMore = projects.length > limitNum;
     const data = hasMore ? projects.slice(0, limitNum) : projects;
-    const nextCursor = hasMore ? data[data.length - 1].serverUpdateTime.getTime() : null;
+    const last = hasMore ? data[data.length - 1] : null;
+    const nextCursor = last ? `${last.serverUpdateTime.getTime()}_${last._id}` : null;
 
     return res.status(200).json({
       code: ERROR_CODES.SUCCESS,

@@ -236,6 +236,16 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _applySession(Map<String, dynamic> data) async {
+    // 本机残留的是其它账号的数据（上次登出时刻意保留给原账号重登）：
+    // 新账号绝不能在界面看到旧账号的工时/开支（隐私泄露），也不能把旧数据
+    // 推到新账号云端。归属不符时先清空本机业务数据，新账号从云端拉取自己的数据。
+    // 同账号重登不受影响（owner 匹配），游客未同步的数据归首个登录账号（owner 为空）。
+    final owner = HiveService.configBoxInstance.get('data_owner_id') as String?;
+    final incomingUserId = data['userId'] as String?;
+    if (owner != null && owner.isNotEmpty && incomingUserId != null && owner != incomingUserId) {
+      await _clearLocalData();
+    }
+
     final now = DateTime.now().millisecondsSinceEpoch;
     final premiumType = (data['premiumType'] as String?) ?? 'free';
     _accessToken = data['accessToken'] as String;
