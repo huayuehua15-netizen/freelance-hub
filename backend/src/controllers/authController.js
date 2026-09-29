@@ -67,26 +67,65 @@ const register = async (req, res, next) => {
       return invalidCredentialsResponse(res, t('errors.validation.invalidCurrency', req.lang));
     }
 
-    // 查重必须与存储归一化一致(trim+lowercase)，否则带空格的邮箱会绕过分支、撞 unique 索引
+    // 查重必须与存储归一化一致(trim+lowercase)，否则带空格的邮箱会绕过复活分支、撞 unique 索引
     const existing = await User.findOne({ userEmail: email.trim().toLowerCase() });
     if (existing) {
-      // 活跃账号：邮箱已注册。
-      //
-      // 软删账号（30 天宽限期内）：同样返回 409，禁止自助"复活"。
-      // 旧实现允许任何知道该邮箱的人直接注册并重置密码，即接管一个
-      // 仍完整保留项目/客户/账单数据的账号（account takeover）。
-      // 宽限期内的恢复只能走 support 人工通道（与隐私政策声明一致）；
-      // 宽限期结束后 cleanupService 物理删除记录，邮箱自然释放可重新注册。
-      if (existing.isDeleted) {
-        logger.warn(
-          `Registration blocked for soft-deleted account ${existing.userId} (within 30-day grace period). ` +
-            'Support-mediated restore required; data is retained until purge.'
-        );
+      // 软删除账号 30 天宽限期内的邮箱无法注册：可复活原账号继续使用（数据不丢）。
+      if (!existing.isDeleted) {
+        return res.status(409).json({
+          code: ERROR_CODES.CONFLICT,
+          msg: t('errors.auth.emailExists', req.lang),
+          data: null,
+          timestamp: Date.now(),
+        });
       }
-      return res.status(409).json({
-        code: ERROR_CODES.CONFLICT,
-        msg: t('errors.auth.emailExists', req.lang),
-        data: null,
+      // 复活：重置凭据，恢复为活跃状态；业务数据（项目/工时/开支）原样保留。
+      existing.isDeleted = false;
+      existing.deletedAt = null;
+      existing.userName = userName?.trim() || existing.userName;
+      existing.currency = currency || existing.currency;
+      existing.timezone = timezone || existing.timezone;
+      existing.passwordHash = await bcrypt.hash(password, config.bcryptRounds);
+      // 演示开关显式开启时才默认 annual；否则一律 free（防误上线全员年卡）
+      existing.premiumType = config.demoAnnualByDefault ? 'annual' : 'free';
+      existing.expireTime = config.demoAnnualByDefault ? Date.now() + 365 * 24 * 60 * 60 * 1000 : null;
+      // 复活时重置邮箱验证状态：旧 token 已失效/过期，残留会导致横幅状态错乱
+      if (!existing.emailVerified) {
+        existing.emailVerifyTokenHash = null;
+        existing.emailVerifyExpiresAt = null;
+        existing.lastVerificationSentAt = null;
+        const verifyToken = newOpaqueToken();
+        existing.emailVerifyTokenHash = hashToken(verifyToken);
+        existing.emailVerifyExpiresAt = new Date(Date.now() + VERIFY_TTL_MS);
+        existing.lastVerificationSentAt = new Date();
+        // 非阻断：发送失败不影响注册成功，客户端可稍后重发
+        emailService.sendVerificationEmail(
+          existing,
+          `${config.clientUrl}/verify-email?token=${verifyToken}`
+        ).catch((err) => logger.warn(`verification email (reactivated) failed: ${err.message}`));
+      }
+
+      const accessToken = generateAccessToken(existing.userId);
+      const refreshToken = generateRefreshToken(existing.userId);
+      existing.refreshToken = hashToken(refreshToken);
+      await existing.save();
+
+      return res.status(200).json({
+        code: ERROR_CODES.SUCCESS,
+        msg: t('common.success', req.lang),
+        data: {
+          userId: existing.userId,
+          email: existing.userEmail,
+          userName: existing.userName,
+          premiumType: existing.premiumType,
+          currency: existing.currency,
+          timezone: existing.timezone,
+          emailVerified: existing.emailVerified === true,
+          emailVerificationAvailable: emailService.isConfigured(),
+          accessToken,
+          refreshToken,
+          expiresIn: accessExpiresSeconds,
+        },
         timestamp: Date.now(),
       });
     }

@@ -258,25 +258,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         padding: const EdgeInsets.only(right: 24),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      confirmDismiss: (_) async {
-        // 删除不可逆（软删后界面无恢复入口）：先二次确认，避免误滑丢数据
-        final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: Text(AppLocalizations.t('deleteExpense')),
-                content: Text(AppLocalizations.t('deleteExpenseConfirm')),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.t('cancel'))),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(AppLocalizations.t('delete'), style: const TextStyle(color: AppTheme.danger)),
-                  ),
-                ],
-              ),
-            ) ??
-            false;
-        return confirmed;
-      },
+      // 不弹二次确认：验收标准 2.7.5 为「左滑 → 点击软删除」，
+      // 插入确认对话框会改变已验收的交互流程。防误删改由下面的撤销
+      // SnackBar 承担（软删可复位，误滑不再是永久丢失）。
       onDismissed: (_) async {
         await expenseProvider.deleteExpense(expense.expenseId);
         if (!context.mounted) return;
